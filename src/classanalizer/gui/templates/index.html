@@ -75,6 +75,12 @@
       color: var(--text-muted);
     }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
     .status-badge {
       display: flex;
       align-items: center;
@@ -191,10 +197,17 @@
       margin-bottom: 18px;
     }
 
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
     label {
       display: block;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       color: var(--text-muted);
       margin-bottom: 6px;
       text-transform: uppercase;
@@ -363,7 +376,7 @@
       border-radius: 8px;
     }
 
-    /* Processing Overlay / State */
+    /* Processing Overlay */
     .processing-card {
       text-align: center;
       padding: 40px 20px;
@@ -423,12 +436,14 @@
       <div class="brand-icon">🎓</div>
       <div>
         <div class="brand-title">ClassAnalizer</div>
-        <div class="brand-subtitle">Asistente Inteligente de Clases con Gemini</div>
+        <div class="brand-subtitle">Asistente Inteligente de Clases con Gemini Flash</div>
       </div>
     </div>
-    <div class="status-badge">
-      <div id="statusDot" class="status-dot ready"></div>
-      <span id="statusText">Listo</span>
+    <div class="header-right">
+      <div class="status-badge">
+        <div id="statusDot" class="status-dot ready"></div>
+        <span id="statusText">Listo</span>
+      </div>
     </div>
   </header>
 
@@ -452,9 +467,20 @@
         <p class="card-description">Captura el audio de Google Meet, Zoom o micrófono del sistema en tiempo real.</p>
       </div>
 
-      <div class="form-group">
-        <label>Nombre de la Materia / Clase</label>
-        <input type="text" id="recSubject" placeholder="Ej. Redes de Computadoras, Sistemas Operativos...">
+      <div class="form-row">
+        <div>
+          <label>Nombre de la Materia / Clase</label>
+          <input type="text" id="recSubject" placeholder="Ej. Redes de Computadoras">
+        </div>
+        <div>
+          <label>Modelo Gemini Flash</label>
+          <select id="recModelSelect" onchange="syncModelSelection(this.value)">
+            <option value="gemini-3.7-flash" selected>⚡ Gemini 3.7 Flash (Recomendado)</option>
+            <option value="gemini-3.6-flash">⚡ Gemini 3.6 Flash</option>
+            <option value="gemini-3.5-flash">⚡ Gemini 3.5 Flash</option>
+            <option value="gemini-flash-latest">⚡ Gemini Flash Latest</option>
+          </select>
+        </div>
       </div>
 
       <div class="form-group">
@@ -511,9 +537,20 @@
         <button class="btn btn-secondary" style="width: auto; padding: 8px 14px;" onclick="selectFile()">Cambiar</button>
       </div>
 
-      <div class="form-group">
-        <label>Nombre de la Materia</label>
-        <input type="text" id="importSubject" placeholder="Nombre de la materia para la guía">
+      <div class="form-row">
+        <div>
+          <label>Nombre de la Materia</label>
+          <input type="text" id="importSubject" placeholder="Nombre de la materia para la guía">
+        </div>
+        <div>
+          <label>Modelo Gemini Flash</label>
+          <select id="importModelSelect" onchange="syncModelSelection(this.value)">
+            <option value="gemini-3.7-flash" selected>⚡ Gemini 3.7 Flash (Recomendado)</option>
+            <option value="gemini-3.6-flash">⚡ Gemini 3.6 Flash</option>
+            <option value="gemini-3.5-flash">⚡ Gemini 3.5 Flash</option>
+            <option value="gemini-flash-latest">⚡ Gemini Flash Latest</option>
+          </select>
+        </div>
       </div>
 
       <button id="btnAnalyzeImport" class="btn btn-primary" onclick="analyzeImportedFile()" disabled style="opacity: 0.5;">
@@ -578,6 +615,13 @@
     let timerInterval = null;
     let secondsElapsed = 0;
     let currentArtifacts = null;
+    let selectedModel = 'gemini-3.7-flash';
+
+    function syncModelSelection(val) {
+      selectedModel = val;
+      document.getElementById('recModelSelect').value = val;
+      document.getElementById('importModelSelect').value = val;
+    }
 
     function switchTab(tab) {
       activeTab = tab;
@@ -651,13 +695,13 @@
 
     async function stopLiveRecording() {
       setRecordingUI(false);
-      showProcessing("🧠 Procesando Grabación", "Subiendo audio a Gemini y generando guía...");
+      showProcessing("🧠 Procesando Grabación", `Subiendo audio a Gemini (${selectedModel}) y generando guía...`);
 
       try {
         const res = await window.pywebview.api.stop_recording_and_process();
         if (res.status === 'success') {
           const session = res.session;
-          const analysisRes = await window.pywebview.api.run_analysis(session.audio_file, session.subject);
+          const analysisRes = await window.pywebview.api.run_analysis(session.audio_file, session.subject, selectedModel);
           if (analysisRes.status === 'success') {
             showResults(analysisRes.artifacts);
           } else {
@@ -703,10 +747,10 @@
       if (!currentSelectedPath) return;
       const subject = document.getElementById('importSubject').value.trim() || 'Clase';
 
-      showProcessing("🧠 Analizando Archivo con Gemini", "Extrayendo audio y generando tu guía pedagógica...");
+      showProcessing("🧠 Analizando Archivo con Gemini", `Procesando con ${selectedModel} y generando tu guía pedagógica...`);
 
       try {
-        const res = await window.pywebview.api.run_analysis(currentSelectedPath, subject);
+        const res = await window.pywebview.api.run_analysis(currentSelectedPath, subject, selectedModel);
         if (res.status === 'success') {
           showResults(res.artifacts);
         } else {
@@ -773,6 +817,9 @@
     window.addEventListener('pywebviewready', async () => {
       try {
         const state = await window.pywebview.api.get_initial_state();
+        if (state.model) {
+          syncModelSelection(state.model);
+        }
         if (state.is_recording && state.active_session) {
           document.getElementById('recSubject').value = state.active_session.subject || '';
           setRecordingUI(true);

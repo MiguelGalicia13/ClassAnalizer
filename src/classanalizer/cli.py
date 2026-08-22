@@ -130,13 +130,14 @@ def cmd_watch(args):
         except KeyboardInterrupt:
             console.print("\n[dim]Monitor cerrado.[/dim]")
 
-def process_audio_file(audio_path: Path, subject: str, output_dir: Path, date_str: str = ""):
-    console.print(f"\n[bold blue]🧠 Procesando audio con Google Gemini ({GEMINI_MODEL}) - Materia: {subject}...[/bold blue]")
-    send_notification("🧠 Procesando Clase", f"Analizando con Gemini: {subject}...")
+def process_audio_file(audio_path: Path, subject: str, output_dir: Path, date_str: str = "", model: str = None):
+    chosen_model = model or GEMINI_MODEL or "gemini-3.7-flash"
+    console.print(f"\n[bold blue]🧠 Procesando audio con Google Gemini ({chosen_model}) - Materia: {subject}...[/bold blue]")
+    send_notification("🧠 Procesando Clase", f"Analizando con {chosen_model}: {subject}...")
 
     with console.status("[bold green]Subiendo y estructurando guía pedagógica con Gemini...") as status:
         analyzer = GeminiAnalyzer()
-        markdown_text, tts_text = analyzer.analyze_audio(audio_path, subject=subject, date_str=date_str)
+        markdown_text, tts_text = analyzer.analyze_audio(audio_path, subject=subject, date_str=date_str, model=chosen_model)
         
         status.update("[bold cyan]Exportando guía en Markdown y PDF...")
         md_file = output_dir / "guia_estudio.md"
@@ -170,7 +171,7 @@ def cmd_stop(args):
             output_dir = Path(session["output_dir"])
             subject = session["subject"]
             date_str = session.get("date", "")
-            process_audio_file(audio_path, subject, output_dir, date_str)
+            process_audio_file(audio_path, subject, output_dir, date_str, model=args.model)
     except Exception as e:
         console.print(f"[bold red]Error deteniendo grabación:[/bold red] {e}")
         sys.exit(1)
@@ -186,7 +187,7 @@ def cmd_analyze(args):
     output_dir = Path(output_dir).resolve()
 
     try:
-        process_audio_file(audio_path, subject, output_dir)
+        process_audio_file(audio_path, subject, output_dir, model=args.model)
     except Exception as e:
         console.print(f"[bold red]Error durante el análisis:[/bold red] {e}")
         sys.exit(1)
@@ -194,7 +195,7 @@ def cmd_analyze(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="classanalizer",
-        description="Grabador inteligente de clases y generador de guías de estudio con Gemini"
+        description="Grabador inteligente de clases y generador de guías de estudio con Gemini Flash"
     )
     subparsers = parser.add_subparsers(dest="command", help="Comando a ejecutar")
 
@@ -220,12 +221,14 @@ def main():
     # Stop
     p_stop = subparsers.add_parser("stop", help="Detiene la grabación y genera la guía")
     p_stop.add_argument("--no-analyze", action="store_true", help="Detiene la grabación sin procesar con IA")
+    p_stop.add_argument("--model", "-m", choices=["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"], default="gemini-3.7-flash", help="Modelo de Gemini Flash a usar")
 
     # Analyze
     p_analyze = subparsers.add_parser("analyze", help="Analiza un archivo de audio ya existente")
-    p_analyze.add_argument("file", help="Ruta al archivo de audio (.mp3, .wav, .m4a, .mp4)")
+    p_analyze.add_argument("file", help="Ruta al archivo de audio/video (.mp3, .wav, .m4a, .mp4, .mkv)")
     p_analyze.add_argument("--subject", "-s", help="Nombre de la materia")
     p_analyze.add_argument("--outdir", "-o", help="Directorio donde guardar los resultados")
+    p_analyze.add_argument("--model", "-m", choices=["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"], default="gemini-3.7-flash", help="Modelo de Gemini Flash a usar")
 
     args = parser.parse_args()
 
@@ -242,7 +245,6 @@ def main():
     elif args.command == "analyze":
         cmd_analyze(args)
     else:
-        # Si se ejecuta sin argumentos, abrir la aplicación de escritorio gráfica
         cmd_gui()
 
 if __name__ == "__main__":

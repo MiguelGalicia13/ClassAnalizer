@@ -26,7 +26,13 @@ class DesktopBridgeApi:
         session = AudioRecorder.get_session_info()
         return {
             "has_api_key": bool(GEMINI_API_KEY),
-            "model": GEMINI_MODEL,
+            "model": GEMINI_MODEL or "gemini-3.7-flash",
+            "available_models": [
+                {"id": "gemini-3.7-flash", "name": "Gemini 3.7 Flash (Recomendado / Más Reciente)"},
+                {"id": "gemini-3.6-flash", "name": "Gemini 3.6 Flash"},
+                {"id": "gemini-3.5-flash", "name": "Gemini 3.5 Flash"},
+                {"id": "gemini-flash-latest", "name": "Gemini Flash Latest"}
+            ],
             "output_dir": str(OUTPUT_DIR),
             "is_recording": AudioRecorder.is_recording(),
             "active_session": session
@@ -82,8 +88,8 @@ class DesktopBridgeApi:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def run_analysis(self, file_path: str, subject: str) -> Dict[str, Any]:
-        """Procesa un archivo de audio/video y genera los artefactos (MD, PDF, TTS)."""
+    def run_analysis(self, file_path: str, subject: str, model: Optional[str] = None) -> Dict[str, Any]:
+        """Procesa un archivo de audio/video con el modelo Flash seleccionado."""
         try:
             path_obj = Path(file_path).resolve()
             if not path_obj.exists():
@@ -97,7 +103,7 @@ class DesktopBridgeApi:
             out_dir.mkdir(parents=True, exist_ok=True)
 
             analyzer = GeminiAnalyzer()
-            markdown_text, tts_text = analyzer.analyze_audio(path_obj, subject=subject)
+            markdown_text, tts_text = analyzer.analyze_audio(path_obj, subject=subject, model=model)
 
             md_file = out_dir / "guia_estudio.md"
             pdf_file = out_dir / "guia_estudio.pdf"

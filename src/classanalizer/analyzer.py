@@ -19,12 +19,12 @@ class GeminiAnalyzer:
                 "No se encontró GEMINI_API_KEY. Configúrala en el archivo .env o en tus variables de entorno.\n"
                 "Puedes obtener tu clave gratuita en: https://aistudio.google.com/app/apikey"
             )
-        self.model = model or GEMINI_MODEL
+        self.default_model = model or GEMINI_MODEL or "gemini-3.7-flash"
         self.client = genai.Client(api_key=self.api_key)
 
     @staticmethod
     def _extract_audio_if_video(file_path: Path) -> Tuple[Path, bool]:
-        """Si el archivo es un video (.mp4, .mkv, .mov, etc.), extrae solo el audio MP3 para reducir tamaño un 90%."""
+        """Si el archivo es un video (.mp4, .mkv, etc.), extrae solo el audio MP3 para optimizar tamaño."""
         video_extensions = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
         if file_path.suffix.lower() in video_extensions:
             temp_audio = Path(tempfile.gettempdir()) / f"extracted_{file_path.stem}_{int(time.time())}.mp3"
@@ -37,15 +37,14 @@ class GeminiAnalyzer:
             return temp_audio, True
         return file_path, False
 
-    def _call_gemini_with_resilience(self, audio_file_upload, prompt: str):
-        # Lista ordenada de modelos a probar
-        candidate_models = [self.model, "gemini-3.6-flash", "gemini-flash-latest", "gemini-2.5-pro"]
+    def _call_gemini_with_resilience(self, audio_file_upload, prompt: str, primary_model: str):
+        # Modelos flash permitidos en orden de fallback
+        candidate_models = [primary_model, "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"]
         seen = set()
         models_to_try = [m for m in candidate_models if not (m in seen or seen.add(m))]
 
         last_error = None
         for model_name in models_to_try:
-            # Reintentar hasta 3 veces por modelo si hay saturación temporal (503 / 429)
             for attempt in range(1, 4):
                 try:
                     response = self.client.models.generate_content(
@@ -61,28 +60,30 @@ class GeminiAnalyzer:
                 except Exception as e:
                     last_error = e
                     err_msg = str(e)
-                    # Si es 503 (Servidor saturado) o 429 (Límite de tasa), esperar y reintentar
+                    # Si es 503 (saturado) o 429 (límite de peticiones), esperar y reintentar
                     if "503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg:
                         time.sleep(3 * attempt)
                         continue
-                    # Si es 404 (Modelo no disponible), pasar al siguiente modelo
-                    if "404" in err_msg or "NOT_FOUND" in err_msg:
+                    # Si el modelo no existe o no tiene permisos (404 / 403), probar siguiente modelo flash
+                    if "404" in err_msg or "NOT_FOUND" in err_msg or "PERMISSION_DENIED" in err_msg:
                         break
                     raise e
         raise last_error
 
-    def analyze_audio(self, audio_path: Path, subject: str = "Clase", date_str: str = "") -> Tuple[str, str]:
+    def analyze_audio(self, audio_path: Path, subject: str = "Clase", date_str: str = "", model: Optional[str] = None) -> Tuple[str, str]:
         """
-        Sube el audio/video a Gemini con extracción de audio automática y reintentos ante saturación 503.
+        Sube el audio/video a Gemini, analiza la clase y devuelve: (markdown_guia, resumen_tts)
         """
         if not audio_path.exists():
             raise FileNotFoundError(f"El archivo no existe: {audio_path}")
 
-        # 1. Si es video, extraer solo el audio para evitar saturación y acelerar la subida
+        selected_model = model or self.default_model
+
+        # 1. Si es video, extraer solo el audio
         proc_path, is_temp = self._extract_audio_if_video(audio_path)
 
         try:
-            # 2. Subir archivo a la File API de Gemini
+            # 2. Subir a Gemini File API
             audio_file_upload = self.client.files.upload(file=str(proc_path))
 
             while audio_file_upload.state.name == "PROCESSING":
@@ -98,8 +99,8 @@ class GeminiAnalyzer:
                 date=date_str or time.strftime("%Y-%m-%d")
             )
 
-            # 4. Invocar modelo con reintentos y fallback
-            full_text = self._call_gemini_with_resilience(audio_file_upload, prompt)
+            # 4. Invocar modelo seleccionado con reintentos
+            full_text = self._call_gemini_with_resilience(audio_file_upload, prompt, primary_model=selected_model)
 
             # 5. Limpieza del archivo subido en Google Cloud
             try:
@@ -108,11 +109,10 @@ class GeminiAnalyzer:
                 pass
 
         finally:
-            # Eliminar audio temporal si se extrajo de un video
             if is_temp and proc_path.exists():
                 proc_path.unlink(missing_ok=True)
 
-        # 6. Extraer texto para TTS y limpiar el Markdown final
+        # 6. Extraer texto para TTS y Markdown limpio
         tts_match = re.search(r"## 🎙️ RESUMEN_TTS_INICIO\s*(.*?)\s*## 🎙️ RESUMEN_TTS_FIN", full_text, re.DOTALL)
         if tts_match:
             tts_text = tts_match.group(1).strip()
