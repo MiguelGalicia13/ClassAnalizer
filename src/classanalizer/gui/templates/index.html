@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClassAnalizer Desktop</title>
+  <style>
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #131d31;
+      --bg-card: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-glow: rgba(59, 130, 246, 0.25);
+      --recording-red: #ef4444;
+      --success-green: #10b981;
+      --warning-amber: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      font-size: 24px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(51, 65, 85, 0.6);
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .status-dot.active {
+      background: var(--recording-red);
+      box-shadow: 0 0 8px var(--recording-red);
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-dot.ready {
+      background: var(--success-green);
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    /* Tab Switcher */
+    .tabs-container {
+      display: flex;
+      background: var(--bg-secondary);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      max-width: 500px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .tab-button.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    /* Cards and Sections */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-description {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Forms & Inputs */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    /* Timer Display */
+    .timer-container {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .timer-display {
+      font-size: 48px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 2px;
+      color: var(--text-main);
+    }
+
+    .timer-display.recording {
+      color: var(--recording-red);
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    }
+
+    .audio-waves {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      height: 24px;
+      margin-top: 12px;
+    }
+
+    .wave-bar {
+      width: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      height: 6px;
+    }
+
+    .wave-bar.animated {
+      background: var(--recording-red);
+      animation: wave 1s ease-in-out infinite alternate;
+    }
+
+    .wave-bar:nth-child(2) { animation-delay: 0.2s; }
+    .wave-bar:nth-child(3) { animation-delay: 0.4s; }
+    .wave-bar:nth-child(4) { animation-delay: 0.1s; }
+    .wave-bar:nth-child(5) { animation-delay: 0.3s; }
+
+    @keyframes wave {
+      0% { height: 4px; }
+      100% { height: 24px; }
+    }
+
+    /* Action Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    .btn-danger {
+      background: var(--recording-red);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    /* File Drop Zone */
+    .dropzone {
+      border: 2px dashed var(--border-color);
+      border-radius: 14px;
+      padding: 36px 20px;
+      text-align: center;
+      background: rgba(19, 29, 49, 0.4);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .dropzone:hover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .dropzone-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    .file-details {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .file-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .file-icon {
+      font-size: 24px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    /* Processing Overlay / State */
+    .processing-card {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(59, 130, 246, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Results Section */
+    .results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .markdown-viewer {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 350px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      user-select: text;
+    }
+
+    /* Hidden Utility */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🎓</div>
+      <div>
+        <div class="brand-title">ClassAnalizer</div>
+        <div class="brand-subtitle">Asistente Inteligente de Clases con Gemini</div>
+      </div>
+    </div>
+    <div class="status-badge">
+      <div id="statusDot" class="status-dot ready"></div>
+      <span id="statusText">Listo</span>
+    </div>
+  </header>
+
+  <!-- Main View -->
+  <main>
+
+    <!-- Tab Navigation -->
+    <div class="tabs-container" id="tabsBar">
+      <button class="tab-button active" onclick="switchTab('record')">
+        🎙️ Grabar en Vivo
+      </button>
+      <button class="tab-button" onclick="switchTab('import')">
+        📂 Importar Grabación
+      </button>
+    </div>
+
+    <!-- 1. RECORD TAB -->
+    <section id="recordSection" class="card">
+      <div class="card-header">
+        <h2 class="card-title">🎙️ Grabar Clase en Vivo</h2>
+        <p class="card-description">Captura el audio de Google Meet, Zoom o micrófono del sistema en tiempo real.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Nombre de la Materia / Clase</label>
+        <input type="text" id="recSubject" placeholder="Ej. Redes de Computadoras, Sistemas Operativos...">
+      </div>
+
+      <div class="form-group">
+        <label>Fuente de Audio</label>
+        <select id="recSource">
+          <option value="both">🔊 Google Meet + 🎙️ Micrófono (Recomendado)</option>
+          <option value="meet">🔊 Solo Google Meet (Audio del Sistema)</option>
+          <option value="mic">🎙️ Solo Micrófono Físico</option>
+        </select>
+      </div>
+
+      <div class="timer-container">
+        <div id="timerDisplay" class="timer-display">00:00:00</div>
+        <div class="audio-waves" id="audioWaves">
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+        </div>
+      </div>
+
+      <button id="btnStartRec" class="btn btn-primary" onclick="startLiveRecording()">
+        ▶ Iniciar Grabación
+      </button>
+      <button id="btnStopRec" class="btn btn-danger hidden" onclick="stopLiveRecording()">
+        ⏹ Detener Grabación y Analizar con Gemini
+      </button>
+    </section>
+
+    <!-- 2. IMPORT TAB -->
+    <section id="importSection" class="card hidden">
+      <div class="card-header">
+        <h2 class="card-title">📂 Importar Grabación Existente</h2>
+        <p class="card-description">Carga un archivo de video o audio grabado previamente para procesarlo con IA.</p>
+      </div>
+
+      <div id="dropzone" class="dropzone" onclick="selectFile()">
+        <div class="dropzone-icon">📁</div>
+        <h3>Haz clic para seleccionar tu grabación</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+          Soporta MP4, MKV, MP3, WAV, M4A, WEBM
+        </p>
+      </div>
+
+      <div id="selectedFileCard" class="file-details hidden">
+        <div class="file-meta">
+          <div class="file-icon" id="fileIcon">🎧</div>
+          <div>
+            <div id="fileName" style="font-weight: 600; font-size: 14px;">archivo.mp4</div>
+            <div id="fileSize" style="font-size: 12px; color: var(--text-muted);">0 MB</div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" style="width: auto; padding: 8px 14px;" onclick="selectFile()">Cambiar</button>
+      </div>
+
+      <div class="form-group">
+        <label>Nombre de la Materia</label>
+        <input type="text" id="importSubject" placeholder="Nombre de la materia para la guía">
+      </div>
+
+      <button id="btnAnalyzeImport" class="btn btn-primary" onclick="analyzeImportedFile()" disabled style="opacity: 0.5;">
+        🧠 Analizar Grabación con Gemini
+      </button>
+    </section>
+
+    <!-- 3. PROCESSING OVERLAY CARD -->
+    <section id="processingSection" class="card hidden processing-card">
+      <div class="spinner"></div>
+      <h2 id="processingTitle" style="margin-bottom: 8px;">🧠 Procesando Clase con Gemini</h2>
+      <p id="processingSubtitle" style="color: var(--text-muted); font-size: 14px;">
+        Extrayendo audio, transcribiendo y estructurando tu guía pedagógica...
+      </p>
+    </section>
+
+    <!-- 4. RESULTS SECTION -->
+    <section id="resultsSection" class="card hidden">
+      <div class="card-header">
+        <h2 class="card-title" style="color: var(--success-green);">✨ ¡Guía Generada Exitosamente!</h2>
+        <p class="card-description">Tu clase ha sido analizada y los entregables multiformato están listos.</p>
+      </div>
+
+      <div class="results-container">
+        <!-- Action Buttons -->
+        <div class="actions-grid">
+          <button class="btn btn-primary" onclick="openGeneratedPdf()">
+            📕 Abrir PDF Maquetado
+          </button>
+          <button class="btn btn-secondary" onclick="openOutputFolder()">
+            📁 Abrir Carpeta
+          </button>
+          <button class="btn btn-secondary" onclick="resetToNewSession()">
+            🔄 Nueva Sesión
+          </button>
+        </div>
+
+        <!-- Audio Player -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">
+            🔊 Resumen Narrado en Audio (TTS)
+          </div>
+          <p id="ttsNarrationText" style="font-size: 13px; margin-bottom: 12px; color: #cbd5e1;"></p>
+          <button class="btn btn-secondary" style="width: auto; padding: 8px 16px;" onclick="openTtsAudioFile()">
+            ▶ Reproducir Audio en el Sistema
+          </button>
+        </div>
+
+        <!-- Markdown Viewer -->
+        <div>
+          <label>Vista Previa de la Guía (.md)</label>
+          <div id="markdownPreview" class="markdown-viewer"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let activeTab = 'record';
+    let currentSelectedPath = null;
+    let timerInterval = null;
+    let secondsElapsed = 0;
+    let currentArtifacts = null;
+
+    function switchTab(tab) {
+      activeTab = tab;
+      const tabBtns = document.querySelectorAll('.tab-button');
+      tabBtns[0].classList.toggle('active', tab === 'record');
+      tabBtns[1].classList.toggle('active', tab === 'import');
+
+      document.getElementById('recordSection').classList.toggle('hidden', tab !== 'record');
+      document.getElementById('importSection').classList.toggle('hidden', tab !== 'import');
+      document.getElementById('processingSection').classList.add('hidden');
+      document.getElementById('resultsSection').classList.add('hidden');
+    }
+
+    function formatTime(totalSeconds) {
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    // LIVE RECORDING
+    async function startLiveRecording() {
+      const subject = document.getElementById('recSubject').value.trim() || 'Clase';
+      const source = document.getElementById('recSource').value;
+
+      try {
+        const res = await window.pywebview.api.start_recording(subject, source);
+        if (res.status === 'success') {
+          setRecordingUI(true);
+        } else {
+          alert("Error iniciando grabación: " + res.message);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function setRecordingUI(isRec) {
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const btnStart = document.getElementById('btnStartRec');
+      const btnStop = document.getElementById('btnStopRec');
+      const timerDisplay = document.getElementById('timerDisplay');
+      const waveBars = document.querySelectorAll('.wave-bar');
+
+      if (isRec) {
+        statusDot.className = 'status-dot active';
+        statusText.innerText = 'Grabando 🔴';
+        btnStart.classList.add('hidden');
+        btnStop.classList.remove('hidden');
+        timerDisplay.classList.add('recording');
+        waveBars.forEach(b => b.classList.add('animated'));
+
+        secondsElapsed = 0;
+        timerDisplay.innerText = formatTime(secondsElapsed);
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+          secondsElapsed++;
+          timerDisplay.innerText = formatTime(secondsElapsed);
+        }, 1000);
+      } else {
+        statusDot.className = 'status-dot ready';
+        statusText.innerText = 'Listo';
+        btnStart.classList.remove('hidden');
+        btnStop.classList.add('hidden');
+        timerDisplay.classList.remove('recording');
+        waveBars.forEach(b => b.classList.remove('animated'));
+        clearInterval(timerInterval);
+      }
+    }
+
+    async function stopLiveRecording() {
+      setRecordingUI(false);
+      showProcessing("🧠 Procesando Grabación", "Subiendo audio a Gemini y generando guía...");
+
+      try {
+        const res = await window.pywebview.api.stop_recording_and_process();
+        if (res.status === 'success') {
+          const session = res.session;
+          const analysisRes = await window.pywebview.api.run_analysis(session.audio_file, session.subject);
+          if (analysisRes.status === 'success') {
+            showResults(analysisRes.artifacts);
+          } else {
+            alert("Error en análisis: " + analysisRes.message);
+            switchTab('record');
+          }
+        } else {
+          alert("Error deteniendo grabación: " + res.message);
+          switchTab('record');
+        }
+      } catch (err) {
+        alert("Error: " + err);
+        switchTab('record');
+      }
+    }
+
+    // FILE IMPORT
+    async function selectFile() {
+      try {
+        const res = await window.pywebview.api.select_file_dialog();
+        if (res.status === 'success') {
+          currentSelectedPath = res.path;
+          document.getElementById('fileName').innerText = res.filename;
+          document.getElementById('fileSize').innerText = res.size_str + (res.is_video ? " (Video MP4 - Se optimizará automáticamente)" : "");
+          document.getElementById('fileIcon').innerText = res.is_video ? "🎬" : "🎧";
+          document.getElementById('dropzone').classList.add('hidden');
+          document.getElementById('selectedFileCard').classList.remove('hidden');
+
+          if (!document.getElementById('importSubject').value) {
+            document.getElementById('importSubject').value = res.suggested_subject;
+          }
+
+          const btnAnalyze = document.getElementById('btnAnalyzeImport');
+          btnAnalyze.disabled = false;
+          btnAnalyze.style.opacity = '1';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function analyzeImportedFile() {
+      if (!currentSelectedPath) return;
+      const subject = document.getElementById('importSubject').value.trim() || 'Clase';
+
+      showProcessing("🧠 Analizando Archivo con Gemini", "Extrayendo audio y generando tu guía pedagógica...");
+
+      try {
+        const res = await window.pywebview.api.run_analysis(currentSelectedPath, subject);
+        if (res.status === 'success') {
+          showResults(res.artifacts);
+        } else {
+          alert("Error durante el análisis: " + res.message);
+          switchTab('import');
+        }
+      } catch (err) {
+        alert("Error: " + err);
+        switchTab('import');
+      }
+    }
+
+    // PROCESSING & RESULTS
+    function showProcessing(title, subtitle) {
+      document.getElementById('recordSection').classList.add('hidden');
+      document.getElementById('importSection').classList.add('hidden');
+      document.getElementById('tabsBar').classList.add('hidden');
+      document.getElementById('resultsSection').classList.add('hidden');
+      document.getElementById('processingSection').classList.remove('hidden');
+
+      document.getElementById('processingTitle').innerText = title;
+      document.getElementById('processingSubtitle').innerText = subtitle;
+    }
+
+    function showResults(artifacts) {
+      currentArtifacts = artifacts;
+      document.getElementById('processingSection').classList.add('hidden');
+      document.getElementById('resultsSection').classList.remove('hidden');
+
+      document.getElementById('markdownPreview').innerText = artifacts.markdown_content;
+      document.getElementById('ttsNarrationText').innerText = artifacts.tts_text;
+    }
+
+    function openGeneratedPdf() {
+      if (currentArtifacts && currentArtifacts.pdf_file) {
+        window.pywebview.api.open_path_in_system(currentArtifacts.pdf_file);
+      }
+    }
+
+    function openOutputFolder() {
+      if (currentArtifacts && currentArtifacts.output_dir) {
+        window.pywebview.api.open_path_in_system(currentArtifacts.output_dir);
+      }
+    }
+
+    function openTtsAudioFile() {
+      if (currentArtifacts && currentArtifacts.tts_audio_file) {
+        window.pywebview.api.open_path_in_system(currentArtifacts.tts_audio_file);
+      }
+    }
+
+    function resetToNewSession() {
+      document.getElementById('tabsBar').classList.remove('hidden');
+      document.getElementById('resultsSection').classList.add('hidden');
+      currentSelectedPath = null;
+      document.getElementById('dropzone').classList.remove('hidden');
+      document.getElementById('selectedFileCard').classList.add('hidden');
+      document.getElementById('btnAnalyzeImport').disabled = true;
+      document.getElementById('btnAnalyzeImport').style.opacity = '0.5';
+      switchTab('record');
+    }
+
+    // INIT STATE CHECK
+    window.addEventListener('pywebviewready', async () => {
+      try {
+        const state = await window.pywebview.api.get_initial_state();
+        if (state.is_recording && state.active_session) {
+          document.getElementById('recSubject').value = state.active_session.subject || '';
+          setRecordingUI(true);
+          secondsElapsed = state.active_session.elapsed_seconds || 0;
+          document.getElementById('timerDisplay').innerText = formatTime(secondsElapsed);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  </script>
+</body>
+</html>

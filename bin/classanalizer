@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -e
+
+# Resolver enlace simbólico para obtener ruta real del proyecto
+TARGET_FILE="${BASH_SOURCE[0]}"
+while [ -h "$TARGET_FILE" ]; do
+    TARGET_DIR="$(cd -P "$(dirname "$TARGET_FILE")" >/dev/null 2>&1 && pwd)"
+    TARGET_FILE="$(readlink "$TARGET_FILE")"
+    [[ $TARGET_FILE != /* ]] && TARGET_FILE="$TARGET_DIR/$TARGET_FILE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$TARGET_FILE")/.." >/dev/null 2>&1 && pwd)"
+
+if ! command -v uv &> /dev/null; then
+    if [ -f "$HOME/.cargo/bin/uv" ]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    elif [ -f "$HOME/.local/bin/uv" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+fi
+
+# Activar soporte de renderizado GTK / Wayland
+export WEBKIT_DISABLE_COMPOSITING_MODE=0
+
+# Ejecutar ClassAnalizer
+exec uv run --directory "$SCRIPT_DIR" python "$SCRIPT_DIR/src/classanalizer/cli.py" "$@"

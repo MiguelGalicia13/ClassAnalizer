@@ -8,10 +8,15 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "customtkinter>=6.0.0",
     "edge-tts>=7.2.8",
     "google-genai>=2.19.0",
     "markdown>=3.10.3",
+    "pyqt6>=6.11.0",
+    "pyqt6-webengine>=6.11.0",
     "python-dotenv>=1.2.3",
+    "pywebview>=6.2.1",
+    "qtpy>=2.4.3",
     "rich>=15.0.0",
     "weasyprint>=69.0",
 ]

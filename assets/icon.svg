@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e1b4b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#grad)" />
+  
+  <!-- Graduation Cap / Book Shape -->
+  <path d="M256 110 L430 190 L256 270 L82 190 Z" fill="url(#accentGrad)" />
+  <path d="M140 220 L140 310 Q256 370 372 310 L372 220 L256 274 Z" fill="#ffffff" opacity="0.9" />
+  
+  <!-- Sound Waves / Microphone Indicator -->
+  <circle cx="256" cy="400" r="16" fill="#ef4444" />
+  <circle cx="256" cy="400" r="36" fill="none" stroke="#ef4444" stroke-width="6" opacity="0.6" />
+  <circle cx="256" cy="400" r="56" fill="none" stroke="#ef4444" stroke-width="4" opacity="0.3" />
+</svg>

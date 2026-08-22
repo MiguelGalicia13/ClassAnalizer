@@ -8,7 +8,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.live import Live
-from rich.layout import Layout
 
 from classanalizer.recorder import AudioRecorder
 from classanalizer.analyzer import GeminiAnalyzer
@@ -43,6 +42,10 @@ def get_file_size_str(filepath: Path) -> str:
     if size_bytes < 1024 * 1024:
         return f"{size_bytes / 1024:.1f} KB"
     return f"{size_bytes / (1024 * 1024):.2f} MB"
+
+def cmd_gui(args=None):
+    from classanalizer.gui.app import launch_gui
+    launch_gui()
 
 def cmd_start(args):
     try:
@@ -97,7 +100,7 @@ def cmd_watch(args):
                 if not session:
                     panel = Panel(
                         "[yellow]⏸ En espera: No hay ninguna grabación activa actualmente.[/yellow]\n\n"
-                        "[dim]Inicia una grabación con 'classanalizer start [Materia]' en otra terminal o con OpenClaw.[/dim]\n"
+                        "[dim]Inicia una grabación con 'classanalizer start [Materia]' o desde la interfaz gráfica.[/dim]\n"
                         "[dim]Presiona Ctrl+C para salir del monitor.[/dim]",
                         title="🎙️ ClassAnalizer Daemon Watcher"
                     )
@@ -195,6 +198,9 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", help="Comando a ejecutar")
 
+    # GUI Desktop App
+    subparsers.add_parser("gui", help="Lanza la aplicación de escritorio gráfica")
+
     # Start
     p_start = subparsers.add_parser("start", help="Inicia la grabación de una clase")
     p_start.add_argument("subject", nargs="?", default="Clase", help="Nombre de la materia o tema")
@@ -217,13 +223,15 @@ def main():
 
     # Analyze
     p_analyze = subparsers.add_parser("analyze", help="Analiza un archivo de audio ya existente")
-    p_analyze.add_argument("file", help="Ruta al archivo de audio (.mp3, .wav, .m4a)")
+    p_analyze.add_argument("file", help="Ruta al archivo de audio (.mp3, .wav, .m4a, .mp4)")
     p_analyze.add_argument("--subject", "-s", help="Nombre de la materia")
     p_analyze.add_argument("--outdir", "-o", help="Directorio donde guardar los resultados")
 
     args = parser.parse_args()
 
-    if args.command == "start":
+    if args.command == "gui":
+        cmd_gui(args)
+    elif args.command == "start":
         cmd_start(args)
     elif args.command == "status":
         cmd_status(args)
@@ -234,7 +242,8 @@ def main():
     elif args.command == "analyze":
         cmd_analyze(args)
     else:
-        parser.print_help()
+        # Si se ejecuta sin argumentos, abrir la aplicación de escritorio gráfica
+        cmd_gui()
 
 if __name__ == "__main__":
     main()
