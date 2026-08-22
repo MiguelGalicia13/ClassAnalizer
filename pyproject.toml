@@ -1,0 +1,24 @@
+[project]
+name = "classanalizer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "mike", email = "galiciar319@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "edge-tts>=7.2.8",
+    "google-genai>=2.19.0",
+    "markdown>=3.10.3",
+    "python-dotenv>=1.2.3",
+    "rich>=15.0.0",
+    "weasyprint>=69.0",
+]
+
+[project.scripts]
+classanalizer = "classanalizer:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
