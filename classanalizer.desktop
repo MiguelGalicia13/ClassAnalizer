@@ -2,7 +2,7 @@
 [Desktop Entry]
 Name=ClassAnalizer
 GenericName=Asistente de Clases con IA
-Comment=Graba clases virtuales de Google Meet y genera guías de estudio con Gemini
+Comment=Graba clases virtuales de Google Meet y genera guías de estudio con Gemini o Anthropic Claude
 Exec=classanalizer gui
 Icon=classanalizer
 Terminal=false

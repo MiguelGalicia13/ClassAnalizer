@@ -2,11 +2,11 @@
 pkgname=classanalizer
 pkgver=0.1.0
 pkgrel=1
-pkgdesc="Asistente de clases virtuales y generador de guías de estudio con Google Gemini"
+pkgdesc="Asistente de clases virtuales y generador de guías de estudio con Gemini o Anthropic Claude"
 arch=('any')
 url="https://github.com/MiguelGalicia13/ClassAnalizer"
 license=('MIT')
-depends=('python' 'uv' 'ffmpeg' 'pipewire' 'xdg-utils')
+depends=('python' 'uv' 'ffmpeg' 'pipewire' 'pipewire-pulse' 'wireplumber' 'pango' 'cairo' 'gdk-pixbuf2' 'xdg-utils')
 optdepends=('libnotify: notificaciones nativas en el escritorio')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')

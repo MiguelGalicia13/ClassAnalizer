@@ -3,13 +3,14 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Añadir src al path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from classanalizer.recorder import AudioRecorder
-from classanalizer.analyzer import GeminiAnalyzer
+from classanalizer.analyzer_factory import create_analyzer, normalize_provider
 from classanalizer.exporter import Exporter
 from classanalizer.config import TTS_VOICE
 
@@ -40,7 +41,11 @@ def handle_status():
         "audio_file": session.get("audio_file")
     }
 
-def handle_stop(analyze: bool = True):
+def handle_stop(
+    analyze: bool = True,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+):
     try:
         session = AudioRecorder.stop_recording()
         result = {
@@ -56,7 +61,11 @@ def handle_stop(analyze: bool = True):
             subject = session["subject"]
             date_str = session.get("date", "")
             
-            analyzer = GeminiAnalyzer()
+            selected_provider = normalize_provider(provider)
+            analyzer = create_analyzer(
+                provider=selected_provider,
+                model=model,
+            )
             markdown_text, tts_text = analyzer.analyze_audio(audio_path, subject=subject, date_str=date_str)
             
             md_file = output_dir / "guia_estudio.md"
@@ -82,6 +91,8 @@ def main():
     parser.add_argument("--action", choices=["start", "status", "stop"], required=True)
     parser.add_argument("--subject", default="Clase")
     parser.add_argument("--source", default="both", choices=["both", "meet", "mic"])
+    parser.add_argument("--provider", choices=["gemini", "anthropic"], help="Proveedor de IA")
+    parser.add_argument("--model", help="Modelo específico del proveedor")
     parser.add_argument("--no-analyze", action="store_true")
     parser.add_argument("--json", action="store_true", help="Salida en JSON")
 
@@ -92,7 +103,11 @@ def main():
     elif args.action == "status":
         res = handle_status()
     elif args.action == "stop":
-        res = handle_stop(analyze=not args.no_analyze)
+        res = handle_stop(
+            analyze=not args.no_analyze,
+            provider=args.provider,
+            model=args.model,
+        )
     else:
         res = {"status": "error", "message": "Acción no reconocida"}
 

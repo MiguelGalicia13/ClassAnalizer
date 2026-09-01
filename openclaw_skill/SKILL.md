@@ -1,11 +1,13 @@
 ---
 name: class-analizer
-description: Graba clases virtuales (Google Meet) y genera automáticamente guías de estudio en Markdown, PDF y narración en audio (TTS) utilizando Google Gemini.
+description: Graba clases virtuales (Google Meet) y genera automáticamente guías de estudio en Markdown, PDF y narración en audio (TTS) utilizando Google Gemini o Anthropic Claude.
 ---
 
 # ClassAnalizer Skill para OpenClaw
 
 Esta habilidad permite al agente OpenClaw controlar grabaciones de clases y generar resúmenes académicos multiformato.
+
+El proveedor por defecto se configura con `AI_PROVIDER=gemini` o `AI_PROVIDER=anthropic` en `.env`. Claude transcribe primero el audio con `faster-whisper`, por lo que la primera ejecución descargará el modelo local de Whisper.
 
 ## Comandos y Triggers Soportados:
 
@@ -21,3 +23,5 @@ Esta habilidad permite al agente OpenClaw controlar grabaciones de clases y gene
    - Prompt de usuario: *"Termina la clase"*, *"Detén la grabación y genera la guía"*.
    - Ejecución: `uv run python openclaw_skill/bridge.py --action stop --json`
    - El agente recibe las rutas del archivo Markdown, PDF y audio TTS generado, y puede enviar el resumen directamente al usuario en Telegram/WhatsApp.
+
+Para seleccionar un proveedor o modelo puntualmente, agrega `--provider anthropic` y `--model claude-sonnet-5` al comando `stop`.
