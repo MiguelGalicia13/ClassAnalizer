@@ -3,15 +3,16 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Any, Optional
 from google import genai
 from google.genai import types
 
+from classanalizer.base_analyzer import BaseAnalyzer
 from classanalizer.config import GEMINI_API_KEY, GEMINI_MODEL
 from classanalizer.prompts import SYSTEM_PROMPT, ANALYSIS_PROMPT_TEMPLATE
 
 
-class GeminiAnalyzer:
+class GeminiAnalyzer(BaseAnalyzer):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.api_key = api_key or GEMINI_API_KEY
         if not self.api_key:
@@ -22,8 +23,29 @@ class GeminiAnalyzer:
         self.default_model = model or GEMINI_MODEL or "gemini-3.7-flash"
         self.client = genai.Client(api_key=self.api_key)
 
+    @property
+    def provider_name(self) -> str:
+        return "Google Gemini"
+
+    def validate_api_key(self) -> bool:
+        """Valida la clave listando modelos sin ejecutar una inferencia."""
+        try:
+            next(iter(self.client.models.list()), None)
+            return True
+        except Exception:
+            return False
+
+    def list_available_models(self) -> list[dict[str, Any]]:
+        """Devuelve los modelos Gemini Flash que la interfaz puede seleccionar."""
+        return [
+            {"id": "gemini-3.7-flash", "name": "Gemini 3.7 Flash (Recomendado)"},
+            {"id": "gemini-3.6-flash", "name": "Gemini 3.6 Flash"},
+            {"id": "gemini-3.5-flash", "name": "Gemini 3.5 Flash"},
+            {"id": "gemini-flash-latest", "name": "Gemini Flash Latest"},
+        ]
+
     @staticmethod
-    def _extract_audio_if_video(file_path: Path) -> Tuple[Path, bool]:
+    def _extract_audio_if_video(file_path: Path) -> tuple[Path, bool]:
         """Si el archivo es un video (.mp4, .mkv, etc.), extrae solo el audio MP3 para optimizar tamaño."""
         video_extensions = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
         if file_path.suffix.lower() in video_extensions:
@@ -70,7 +92,7 @@ class GeminiAnalyzer:
                     raise e
         raise last_error
 
-    def analyze_audio(self, audio_path: Path, subject: str = "Clase", date_str: str = "", model: Optional[str] = None) -> Tuple[str, str]:
+    def analyze_audio(self, audio_path: Path, subject: str = "Clase", date_str: str = "", model: Optional[str] = None) -> tuple[str, str]:
         """
         Sube el audio/video a Gemini, analiza la clase y devuelve: (markdown_guia, resumen_tts)
         """

@@ -4,15 +4,27 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.live import Live
 
 from classanalizer.recorder import AudioRecorder
-from classanalizer.analyzer import GeminiAnalyzer
+from classanalizer.analyzer_factory import (
+    create_analyzer,
+    list_models_for_provider,
+    normalize_provider,
+    validate_provider_key,
+)
 from classanalizer.exporter import Exporter
-from classanalizer.config import OUTPUT_DIR, TTS_VOICE, GEMINI_MODEL
+from classanalizer.config import (
+    AI_PROVIDER,
+    ANTHROPIC_MODEL,
+    GEMINI_MODEL,
+    OUTPUT_DIR,
+    TTS_VOICE,
+)
 
 console = Console()
 
@@ -130,13 +142,37 @@ def cmd_watch(args):
         except KeyboardInterrupt:
             console.print("\n[dim]Monitor cerrado.[/dim]")
 
-def process_audio_file(audio_path: Path, subject: str, output_dir: Path, date_str: str = "", model: str = None):
-    chosen_model = model or GEMINI_MODEL or "gemini-3.7-flash"
-    console.print(f"\n[bold blue]🧠 Procesando audio con Google Gemini ({chosen_model}) - Materia: {subject}...[/bold blue]")
-    send_notification("🧠 Procesando Clase", f"Analizando con {chosen_model}: {subject}...")
+def process_audio_file(
+    audio_path: Path,
+    subject: str,
+    output_dir: Path,
+    date_str: str = "",
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
+    api_key: Optional[str] = None,
+):
+    selected_provider = normalize_provider(provider)
+    if selected_provider == "anthropic":
+        chosen_model = model or ANTHROPIC_MODEL or "claude-sonnet-5"
+        provider_label = f"Anthropic Claude ({chosen_model})"
+        processing_message = "Transcribiendo con Whisper y estructurando guía con Claude..."
+    else:
+        chosen_model = model or GEMINI_MODEL or "gemini-3.7-flash"
+        provider_label = f"Google Gemini ({chosen_model})"
+        processing_message = "Subiendo y estructurando guía pedagógica con Gemini..."
 
-    with console.status("[bold green]Subiendo y estructurando guía pedagógica con Gemini...") as status:
-        analyzer = GeminiAnalyzer()
+    console.print(
+        f"\n[bold blue]🧠 Procesando audio con {provider_label} - "
+        f"Materia: {subject}...[/bold blue]"
+    )
+    send_notification("🧠 Procesando Clase", f"Analizando con {provider_label}: {subject}...")
+
+    with console.status(f"[bold green]{processing_message}") as status:
+        analyzer = create_analyzer(
+            provider=selected_provider,
+            api_key=api_key,
+            model=chosen_model,
+        )
         markdown_text, tts_text = analyzer.analyze_audio(audio_path, subject=subject, date_str=date_str, model=chosen_model)
         
         status.update("[bold cyan]Exportando guía en Markdown y PDF...")
@@ -171,7 +207,14 @@ def cmd_stop(args):
             output_dir = Path(session["output_dir"])
             subject = session["subject"]
             date_str = session.get("date", "")
-            process_audio_file(audio_path, subject, output_dir, date_str, model=args.model)
+            process_audio_file(
+                audio_path,
+                subject,
+                output_dir,
+                date_str,
+                model=args.model,
+                provider=args.provider,
+            )
     except Exception as e:
         console.print(f"[bold red]Error deteniendo grabación:[/bold red] {e}")
         sys.exit(1)
@@ -187,15 +230,43 @@ def cmd_analyze(args):
     output_dir = Path(output_dir).resolve()
 
     try:
-        process_audio_file(audio_path, subject, output_dir, model=args.model)
+        process_audio_file(
+            audio_path,
+            subject,
+            output_dir,
+            model=args.model,
+            provider=args.provider,
+        )
     except Exception as e:
         console.print(f"[bold red]Error durante el análisis:[/bold red] {e}")
         sys.exit(1)
 
+
+def cmd_validate(args):
+    """Valida la API key y muestra los modelos del proveedor seleccionado."""
+    provider = normalize_provider(args.provider)
+    console.print(f"[bold blue]🔑 Validando API key de {provider}...[/bold blue]")
+    is_valid, message = validate_provider_key(provider)
+    if not is_valid:
+        console.print(f"[bold red]❌ {message}[/bold red]")
+        sys.exit(1)
+
+    console.print(f"[bold green]✅ {message}[/bold green]")
+    try:
+        models = list_models_for_provider(provider)
+        table = Table(title=f"Modelos disponibles ({provider})")
+        table.add_column("ID", style="cyan")
+        table.add_column("Nombre", style="white")
+        for model_info in models:
+            table.add_row(str(model_info["id"]), str(model_info["name"]))
+        console.print(table)
+    except Exception as exc:
+        console.print(f"[yellow]⚠ No se pudieron listar modelos: {exc}[/yellow]")
+
 def main():
     parser = argparse.ArgumentParser(
         prog="classanalizer",
-        description="Grabador inteligente de clases y generador de guías de estudio con Gemini Flash"
+        description="Grabador inteligente de clases y generador de guías de estudio con IA"
     )
     subparsers = parser.add_subparsers(dest="command", help="Comando a ejecutar")
 
@@ -221,14 +292,28 @@ def main():
     # Stop
     p_stop = subparsers.add_parser("stop", help="Detiene la grabación y genera la guía")
     p_stop.add_argument("--no-analyze", action="store_true", help="Detiene la grabación sin procesar con IA")
-    p_stop.add_argument("--model", "-m", choices=["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"], default="gemini-3.7-flash", help="Modelo de Gemini Flash a usar")
+    p_stop.add_argument("--provider", "-p", choices=["gemini", "anthropic"], help="Proveedor de IA")
+    p_stop.add_argument("--model", "-m", default=None, help="Modelo específico del proveedor")
 
     # Analyze
     p_analyze = subparsers.add_parser("analyze", help="Analiza un archivo de audio ya existente")
     p_analyze.add_argument("file", help="Ruta al archivo de audio/video (.mp3, .wav, .m4a, .mp4, .mkv)")
     p_analyze.add_argument("--subject", "-s", help="Nombre de la materia")
     p_analyze.add_argument("--outdir", "-o", help="Directorio donde guardar los resultados")
-    p_analyze.add_argument("--model", "-m", choices=["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"], default="gemini-3.7-flash", help="Modelo de Gemini Flash a usar")
+    p_analyze.add_argument("--provider", "-p", choices=["gemini", "anthropic"], help="Proveedor de IA")
+    p_analyze.add_argument("--model", "-m", default=None, help="Modelo específico del proveedor")
+
+    # Validate
+    p_validate = subparsers.add_parser(
+        "validate",
+        help="Valida la API key y lista los modelos disponibles",
+    )
+    p_validate.add_argument(
+        "--provider",
+        "-p",
+        choices=["gemini", "anthropic"],
+        help="Proveedor de IA (por defecto, AI_PROVIDER)",
+    )
 
     args = parser.parse_args()
 
@@ -244,6 +329,8 @@ def main():
         cmd_stop(args)
     elif args.command == "analyze":
         cmd_analyze(args)
+    elif args.command == "validate":
+        cmd_validate(args)
     else:
         cmd_gui()
 
