@@ -20,14 +20,73 @@ Cuenta tanto con una **Aplicación de Escritorio Gráfica (GUI)** moderna como c
 
 ## 🚀 Inicio Rápido
 
-### 1. Configurar tu API Key de Gemini
+### 1. Instalar dependencias del sistema
+
+ClassAnalizer está orientado a Linux. Instala las herramientas de captura de audio, conversión multimedia, renderizado de PDF y notificaciones según tu distribución.
+
+#### Arch Linux, Manjaro y EndeavourOS
+
+```bash
+sudo pacman -Syu --needed python uv ffmpeg pipewire pipewire-pulse wireplumber libnotify pango cairo gdk-pixbuf2 libffi
+```
+
+#### Debian, Ubuntu, Linux Mint y derivados
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv curl ffmpeg pipewire pipewire-pulse wireplumber \
+  pulseaudio-utils libnotify-bin libcairo2 libpango-1.0-0 libpangoft2-1.0-0 \
+  libharfbuzz-subset0 libffi-dev
+```
+
+#### Fedora
+
+```bash
+sudo dnf install -y python3 curl ffmpeg pipewire pipewire-pulseaudio wireplumber \
+  pulseaudio-utils libnotify pango cairo gdk-pixbuf2 libffi
+```
+
+Si `ffmpeg` no está disponible en los repositorios habilitados, instala primero RPM Fusion y repite el comando:
+
+```bash
+sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+```
+
+#### openSUSE Tumbleweed y Leap
+
+```bash
+sudo zypper install -y python3 curl ffmpeg pipewire pipewire-pulseaudio wireplumber \
+  pulseaudio-utils libnotify-tools pango cairo gdk-pixbuf libffi
+```
+
+En otras distribuciones, instala los equivalentes de `ffmpeg`, `pipewire` o `pulseaudio`, `wireplumber`, `pango` y `libffi` con su gestor de paquetes.
+
+### 2. Preparar Python y el entorno del proyecto
+
+En distribuciones donde `uv` no esté disponible como paquete, instálalo con su instalador oficial:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Desde la raíz del repositorio, instala Python 3.14 y las dependencias bloqueadas:
+
+```bash
+uv python install 3.14
+uv sync
+```
+
+Comprueba que el servidor de audio esté activo antes de grabar. Puedes verificarlo con `pactl info`; debe mostrar un servidor PulseAudio o PulseAudio sobre PipeWire.
+
+### 3. Configurar tu API Key de Gemini
+
 Copia `.env.example` a `.env` y coloca tu clave gratuita de [Google AI Studio](https://aistudio.google.com/app/apikey):
 
 ```bash
 cp .env.example .env
 ```
 
-### 2. Lanzar la Aplicación de Escritorio
+### 4. Lanzar la Aplicación de Escritorio
 
 ```bash
 uv run classanalizer gui
