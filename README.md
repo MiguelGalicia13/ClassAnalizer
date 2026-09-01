@@ -124,3 +124,10 @@ Dentro de la aplicación podrás:
 
 ## 🤖 Integración con OpenClaw
 Consulta la carpeta [`openclaw_skill/`](openclaw_skill/) para usar ClassAnalizer con tu agente personal.
+
+---
+
+## 📄 Licencia
+
+Este proyecto está distribuido bajo los términos de la Licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más información.
+
