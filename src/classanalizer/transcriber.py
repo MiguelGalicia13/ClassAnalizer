@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from classanalizer.config import WHISPER_MODEL
+from classanalizer.platform import get_ffmpeg_binary
 
 
 class Transcriber:
@@ -40,7 +41,7 @@ class Transcriber:
                 f"stt_{file_path.stem}_{int(time.time())}.wav"
             )
             cmd = [
-                "ffmpeg", "-y", "-i", str(file_path),
+                get_ffmpeg_binary(), "-y", "-i", str(file_path),
                 "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le",
                 str(temp_audio),
             ]

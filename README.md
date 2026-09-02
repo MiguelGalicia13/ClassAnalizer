@@ -1,6 +1,6 @@
 # 🎓 ClassAnalizer
 
-**ClassAnalizer** es un asistente y grabador inteligente para clases virtuales (Google Meet, Zoom, Teams) o presenciales en Linux (PipeWire/PulseAudio). Procesa el audio con **Google Gemini** o **Anthropic Claude**, generando automáticamente guías de estudio completas en Markdown, PDF y narraciones en audio (TTS).
+**ClassAnalizer** es un asistente y grabador inteligente para clases virtuales (Google Meet, Zoom, Teams) o presenciales. Funciona en Linux (PipeWire/PulseAudio) y en Windows 10/11 x64 (WASAPI Loopback). Procesa el audio con **Google Gemini** o **Anthropic Claude**, generando automáticamente guías de estudio completas en Markdown, PDF y narraciones en audio (TTS).
 
 Cuenta tanto con una **Aplicación de Escritorio Gráfica (GUI)** moderna como con una **CLI** y una **Skill para OpenClaw**.
 
@@ -9,7 +9,7 @@ Cuenta tanto con una **Aplicación de Escritorio Gráfica (GUI)** moderna como c
 ## ✨ Características Principales
 
 - 🖥️ **Aplicación de Escritorio Moderna:** Interfaz visual con pestañas para **Grabar en Vivo** (cronómetro en tiempo real, ondas de audio, selector de fuente) o **Importar Grabaciones** (arrastrar/seleccionar archivos con optimización automática de videos `.mp4`).
-- 🎙️ **Captura del Sistema en Linux:** Graba la salida de audio de Google Meet (`@DEFAULT_SINK@.monitor`) mezclada con tu micrófono físico (`@DEFAULT_SOURCE@`) en segundo plano sin congelar la app.
+- 🎙️ **Captura multiplataforma:** Linux usa PipeWire/PulseAudio y Windows captura la salida del sistema mediante WASAPI Loopback, con opción de mezclar el micrófono.
 - 🧠 **Análisis con IA:** Usa Gemini con audio nativo o Claude con transcripción local mediante `faster-whisper`.
 - 📄 **Guía de Estudio en Markdown (`.md`):** Resumen ejecutivo, cronología, desarrollo conceptual a fondo, glosario y banco de preguntas tipo examen.
 - 📕 **Documento PDF Maquetado (`.pdf`):** Estilo académico listo para imprimir o leer.
@@ -20,9 +20,24 @@ Cuenta tanto con una **Aplicación de Escritorio Gráfica (GUI)** moderna como c
 
 ## 🚀 Inicio Rápido
 
+### Windows portable (10/11 x64)
+
+Descarga el ZIP de Windows desde la sección **Releases**, extráelo en una carpeta y ejecuta `ClassAnalizer.bat`. El paquete incluye `uv.exe`: en el primer inicio descargará Python 3.12 y las dependencias dentro del entorno de usuario, sin instalar Python ni solicitar permisos de administrador. Se necesita conexión a Internet durante esa primera ejecución y el runtime de Microsoft Edge WebView2 para la interfaz.
+
+Antes de iniciar, configura las claves localmente:
+
+```bat
+copy .env.example .env
+notepad .env
+```
+
+También puedes usar `ClassAnalizer-Silent.vbs` para iniciar la GUI sin mostrar una consola. La grabación `meet` usa WASAPI Loopback, `mic` usa el micrófono predeterminado y `both` mezcla ambas fuentes; no requiere VB-Cable. En Windows los PDF se generan con `xhtml2pdf` y `imageio-ffmpeg` aporta el conversor multimedia incluido en el entorno portable.
+
+Para Linux se conserva WeasyPrint y la instalación de dependencias del sistema indicada a continuación.
+
 ### 1. Instalar dependencias del sistema
 
-ClassAnalizer está orientado a Linux. Instala las herramientas de captura de audio, conversión multimedia, renderizado de PDF y notificaciones según tu distribución.
+Para una instalación nativa en Linux, instala las herramientas de captura de audio, conversión multimedia, renderizado de PDF y notificaciones según tu distribución.
 
 #### Arch Linux, Manjaro y EndeavourOS
 

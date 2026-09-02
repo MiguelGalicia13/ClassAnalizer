@@ -9,6 +9,7 @@ from google.genai import types
 
 from classanalizer.base_analyzer import BaseAnalyzer
 from classanalizer.config import GEMINI_API_KEY, GEMINI_MODEL
+from classanalizer.platform import get_ffmpeg_binary
 from classanalizer.prompts import SYSTEM_PROMPT, ANALYSIS_PROMPT_TEMPLATE
 
 
@@ -51,7 +52,7 @@ class GeminiAnalyzer(BaseAnalyzer):
         if file_path.suffix.lower() in video_extensions:
             temp_audio = Path(tempfile.gettempdir()) / f"extracted_{file_path.stem}_{int(time.time())}.mp3"
             cmd = [
-                "ffmpeg", "-y", "-i", str(file_path),
+                get_ffmpeg_binary(), "-y", "-i", str(file_path),
                 "-vn", "-c:a", "libmp3lame", "-b:a", "96k", "-ar", "44100",
                 str(temp_audio)
             ]

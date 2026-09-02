@@ -1,0 +1,55 @@
+name: Build Windows Portable
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download uv for Windows
+        shell: bash
+        run: |
+          mkdir -p build/windows
+          curl -fL --retry 3 \
+            https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip \
+            -o /tmp/uv-windows.zip
+          unzip -q /tmp/uv-windows.zip -d /tmp/uv-windows
+          cp /tmp/uv-windows/uv.exe build/windows/uv.exe
+
+      - name: Assemble portable distribution
+        shell: bash
+        run: |
+          mkdir -p build/windows/assets build/windows/openclaw_skill
+          cp -a src build/windows/
+          cp -a assets/. build/windows/assets/
+          cp -a openclaw_skill/. build/windows/openclaw_skill/
+          cp pyproject.toml uv.lock README.md .env.example \
+            ClassAnalizer.bat ClassAnalizer-Silent.vbs build/windows/
+          cd build
+          zip -qr ClassAnalizer-windows-x64.zip windows \
+            -x 'windows/__pycache__/*' 'windows/*.pyc'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClassAnalizer-windows-x64
+          path: build/ClassAnalizer-windows-x64.zip
+
+      - name: Publish release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || \
+            gh release create "${GITHUB_REF_NAME}" --title "ClassAnalizer ${GITHUB_REF_NAME}" --generate-notes
+          gh release upload "${GITHUB_REF_NAME}" build/ClassAnalizer-windows-x64.zip --clobber

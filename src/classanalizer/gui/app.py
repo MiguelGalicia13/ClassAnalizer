@@ -1,7 +1,4 @@
 import json
-import os
-import subprocess
-import sys
 import threading
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -26,6 +23,7 @@ from classanalizer.config import (
     OUTPUT_DIR,
     TTS_VOICE,
 )
+from classanalizer.platform import get_gui_backend, open_in_system_viewer
 
 
 def get_configured_api_key(provider: str) -> str:
@@ -215,11 +213,7 @@ class DesktopBridgeApi:
 
     def open_path_in_system(self, target_path: str):
         """Abre un archivo o carpeta en el visor predeterminado del sistema operativo."""
-        try:
-            subprocess.run(["xdg-open", target_path], check=False)
-            return {"status": "success"}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        return open_in_system_viewer(target_path)
 
 
 def time_now_date() -> str:
@@ -241,7 +235,7 @@ def launch_gui():
         background_color="#0f172a"
     )
     api.set_window(window)
-    webview.start(gui="qt", debug=False)
+    webview.start(gui=get_gui_backend(), debug=False)
 
 
 if __name__ == "__main__":

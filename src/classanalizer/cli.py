@@ -1,10 +1,15 @@
 import argparse
-import os
-import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Optional
+
+if sys.platform == "win32":
+    if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -25,20 +30,13 @@ from classanalizer.config import (
     OUTPUT_DIR,
     TTS_VOICE,
 )
+from classanalizer.platform import send_desktop_notification
 
 console = Console()
 
 def send_notification(title: str, message: str, urgency: str = "normal"):
-    """Envía una notificación nativa al escritorio de Linux con notify-send."""
-    try:
-        subprocess.run(
-            ["notify-send", "-a", "ClassAnalizer", "-u", urgency, title, message],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False
-        )
-    except Exception:
-        pass
+    """Envía una notificación usando el backend del sistema operativo."""
+    send_desktop_notification(title, message, urgency)
 
 def format_seconds(seconds: int) -> str:
     m, s = divmod(seconds, 60)
