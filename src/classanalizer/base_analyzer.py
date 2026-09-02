@@ -13,6 +13,7 @@ class BaseAnalyzer(ABC):
         subject: str = "Clase",
         date_str: str = "",
         model: Optional[str] = None,
+        language: Optional[str] = "auto",
     ) -> tuple[str, str]:
         """Analiza audio/video y devuelve (guía Markdown, resumen para TTS)."""
 

@@ -81,6 +81,80 @@
       gap: 12px;
     }
 
+    /* Language Switcher */
+    .lang-switch-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(51, 65, 85, 0.6);
+      border: 1px solid var(--border-color);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .lang-label {
+      color: var(--text-muted);
+      transition: color 0.2s;
+      user-select: none;
+    }
+
+    .lang-label.active {
+      color: var(--text-main);
+      text-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #334155;
+      transition: 0.3s;
+      border-radius: 20px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text-main);
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px var(--accent);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
     .status-badge {
       display: flex;
       align-items: center;
@@ -464,13 +538,23 @@
       <div class="brand-icon">🎓</div>
       <div>
         <div class="brand-title">ClassAnalizer</div>
-        <div class="brand-subtitle">Asistente Inteligente de Clases con IA</div>
+        <div class="brand-subtitle" id="brandSubtitle">AI-Powered Smart Class Assistant</div>
       </div>
     </div>
     <div class="header-right">
+      <!-- Language Toggle Switcher (Default: English -> Slider unchecked; Spanish -> Checked) -->
+      <div class="lang-switch-container">
+        <span class="lang-label active" id="labelEN">EN</span>
+        <label class="switch" title="Toggle Language (EN / ES)">
+          <input type="checkbox" id="langToggle" onchange="onLanguageToggle(this.checked)">
+          <span class="slider"></span>
+        </label>
+        <span class="lang-label" id="labelES">ES</span>
+      </div>
+
       <div class="status-badge">
         <div id="statusDot" class="status-dot ready"></div>
-        <span id="statusText">Listo</span>
+        <span id="statusText">Ready</span>
       </div>
     </div>
   </header>
@@ -480,11 +564,11 @@
 
     <!-- Tab Navigation -->
     <div class="tabs-container" id="tabsBar">
-      <button class="tab-button active" onclick="switchTab('record')">
-        🎙️ Grabar en Vivo
+      <button class="tab-button active" id="tabRecordBtn" onclick="switchTab('record')">
+        🎙️ Live Recording
       </button>
-      <button class="tab-button" onclick="switchTab('import')">
-        📂 Importar Grabación
+      <button class="tab-button" id="tabImportBtn" onclick="switchTab('import')">
+        📂 Import Recording
       </button>
     </div>
 
@@ -492,20 +576,20 @@
     <section id="aiSettings" class="card settings-card">
       <div class="form-row">
         <div>
-          <label for="providerSelect">Proveedor de IA</label>
+          <label for="providerSelect" id="lblProvider">AI Provider</label>
           <select id="providerSelect" onchange="onProviderChange(this.value)">
-            <option value="gemini">🔵 Google Gemini (Audio nativo)</option>
-            <option value="anthropic">🟠 Anthropic Claude (Whisper + Claude)</option>
+            <option value="gemini" id="optGemini">🔵 Google Gemini (Native Audio)</option>
+            <option value="anthropic" id="optClaude">🟠 Anthropic Claude (Whisper + Claude)</option>
           </select>
         </div>
         <div>
-          <label for="apiKeyInput">API key del proveedor</label>
-          <input type="password" id="apiKeyInput" placeholder="Usa la clave configurada en .env">
+          <label for="apiKeyInput" id="lblApiKey">Provider API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="Using key configured in .env">
         </div>
       </div>
       <div style="display: flex; gap: 10px; align-items: center;">
-        <button class="btn btn-secondary" style="width: auto; padding: 9px 14px;" onclick="validateApiKey()">
-          🔑 Validar API key
+        <button class="btn btn-secondary" id="btnValidateKey" style="width: auto; padding: 9px 14px;" onclick="validateApiKey()">
+          🔑 Validate API Key
         </button>
         <span id="providerHelp" class="provider-help"></span>
       </div>
@@ -515,19 +599,19 @@
     <!-- 1. RECORD TAB -->
     <section id="recordSection" class="card">
       <div class="card-header">
-        <h2 class="card-title">🎙️ Grabar Clase en Vivo</h2>
-        <p class="card-description">Captura el audio de Google Meet, Zoom o micrófono del sistema en tiempo real.</p>
+        <h2 class="card-title" id="recCardTitle">🎙️ Live Class Recording</h2>
+        <p class="card-description" id="recCardDesc">Capture real-time audio from Google Meet, Zoom, or system microphone.</p>
       </div>
 
       <div class="form-row">
         <div>
-          <label>Nombre de la Materia / Clase</label>
-          <input type="text" id="recSubject" placeholder="Ej. Redes de Computadoras">
+          <label id="lblRecSubject">Subject / Class Name</label>
+          <input type="text" id="recSubject" placeholder="e.g. Computer Networks">
         </div>
         <div>
-          <label id="recModelLabel">Modelo de IA</label>
+          <label id="recModelLabel">AI Model</label>
           <select id="recModelSelect" onchange="syncModelSelection(this.value)">
-            <option value="gemini-3.7-flash" selected>⚡ Gemini 3.7 Flash (Recomendado)</option>
+            <option value="gemini-3.7-flash" selected>⚡ Gemini 3.7 Flash (Recommended)</option>
             <option value="gemini-3.6-flash">⚡ Gemini 3.6 Flash</option>
             <option value="gemini-3.5-flash">⚡ Gemini 3.5 Flash</option>
             <option value="gemini-flash-latest">⚡ Gemini Flash Latest</option>
@@ -536,11 +620,11 @@
       </div>
 
       <div class="form-group">
-        <label>Fuente de Audio</label>
+        <label id="lblRecSource">Audio Source</label>
         <select id="recSource">
-          <option value="both">🔊 Google Meet + 🎙️ Micrófono (Recomendado)</option>
-          <option value="meet">🔊 Solo Google Meet (Audio del Sistema)</option>
-          <option value="mic">🎙️ Solo Micrófono Físico</option>
+          <option value="both" id="optSrcBoth">🔊 Google Meet + 🎙️ Microphone (Recommended)</option>
+          <option value="meet" id="optSrcMeet">🔊 Google Meet Only (System Audio)</option>
+          <option value="mic" id="optSrcMic">🎙️ Physical Microphone Only</option>
         </select>
       </div>
 
@@ -556,25 +640,25 @@
       </div>
 
       <button id="btnStartRec" class="btn btn-primary" onclick="startLiveRecording()">
-        ▶ Iniciar Grabación
+        ▶ Start Recording
       </button>
       <button id="btnStopRec" class="btn btn-danger hidden" onclick="stopLiveRecording()">
-        ⏹ Detener Grabación y Analizar con IA
+        ⏹ Stop Recording & Analyze with AI
       </button>
     </section>
 
     <!-- 2. IMPORT TAB -->
     <section id="importSection" class="card hidden">
       <div class="card-header">
-        <h2 class="card-title">📂 Importar Grabación Existente</h2>
-        <p class="card-description">Carga un archivo de video o audio grabado previamente para procesarlo con IA.</p>
+        <h2 class="card-title" id="importCardTitle">📂 Import Existing Recording</h2>
+        <p class="card-description" id="importCardDesc">Upload a previously recorded video or audio file to process with AI.</p>
       </div>
 
       <div id="dropzone" class="dropzone" onclick="selectFile()">
         <div class="dropzone-icon">📁</div>
-        <h3>Haz clic para seleccionar tu grabación</h3>
-        <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
-          Soporta MP4, MKV, MP3, WAV, M4A, WEBM
+        <h3 id="dropzoneTitle">Click to select your recording</h3>
+        <p id="dropzoneSubtitle" style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+          Supports MP4, MKV, MP3, WAV, M4A, WEBM
         </p>
       </div>
 
@@ -582,22 +666,22 @@
         <div class="file-meta">
           <div class="file-icon" id="fileIcon">🎧</div>
           <div>
-            <div id="fileName" style="font-weight: 600; font-size: 14px;">archivo.mp4</div>
+            <div id="fileName" style="font-weight: 600; font-size: 14px;">recording.mp4</div>
             <div id="fileSize" style="font-size: 12px; color: var(--text-muted);">0 MB</div>
           </div>
         </div>
-        <button class="btn btn-secondary" style="width: auto; padding: 8px 14px;" onclick="selectFile()">Cambiar</button>
+        <button class="btn btn-secondary" id="btnChangeFile" style="width: auto; padding: 8px 14px;" onclick="selectFile()">Change</button>
       </div>
 
       <div class="form-row">
         <div>
-          <label>Nombre de la Materia</label>
-          <input type="text" id="importSubject" placeholder="Nombre de la materia para la guía">
+          <label id="lblImportSubject">Subject Name</label>
+          <input type="text" id="importSubject" placeholder="Subject name for the study guide">
         </div>
         <div>
-          <label id="importModelLabel">Modelo de IA</label>
+          <label id="importModelLabel">AI Model</label>
           <select id="importModelSelect" onchange="syncModelSelection(this.value)">
-            <option value="gemini-3.7-flash" selected>⚡ Gemini 3.7 Flash (Recomendado)</option>
+            <option value="gemini-3.7-flash" selected>⚡ Gemini 3.7 Flash (Recommended)</option>
             <option value="gemini-3.6-flash">⚡ Gemini 3.6 Flash</option>
             <option value="gemini-3.5-flash">⚡ Gemini 3.5 Flash</option>
             <option value="gemini-flash-latest">⚡ Gemini Flash Latest</option>
@@ -606,54 +690,54 @@
       </div>
 
       <button id="btnAnalyzeImport" class="btn btn-primary" onclick="analyzeImportedFile()" disabled style="opacity: 0.5;">
-        🧠 Analizar Grabación con IA
+        🧠 Analyze Recording with AI
       </button>
     </section>
 
     <!-- 3. PROCESSING OVERLAY CARD -->
     <section id="processingSection" class="card hidden processing-card">
       <div class="spinner"></div>
-      <h2 id="processingTitle" style="margin-bottom: 8px;">🧠 Procesando Clase con IA</h2>
+      <h2 id="processingTitle" style="margin-bottom: 8px;">🧠 Processing Class with AI</h2>
       <p id="processingSubtitle" style="color: var(--text-muted); font-size: 14px;">
-        Extrayendo audio, transcribiendo y estructurando tu guía pedagógica...
+        Extracting audio, transcribing, and generating your study guide...
       </p>
     </section>
 
     <!-- 4. RESULTS SECTION -->
     <section id="resultsSection" class="card hidden">
       <div class="card-header">
-        <h2 class="card-title" style="color: var(--success-green);">✨ ¡Guía Generada Exitosamente!</h2>
-        <p class="card-description">Tu clase ha sido analizada y los entregables multiformato están listos.</p>
+        <h2 class="card-title" id="resultsTitle" style="color: var(--success-green);">✨ Study Guide Generated Successfully!</h2>
+        <p class="card-description" id="resultsDesc">Your class has been analyzed and multi-format deliverables are ready.</p>
       </div>
 
       <div class="results-container">
         <!-- Action Buttons -->
         <div class="actions-grid">
-          <button class="btn btn-primary" onclick="openGeneratedPdf()">
-            📕 Abrir PDF Maquetado
+          <button class="btn btn-primary" id="btnOpenPdf" onclick="openGeneratedPdf()">
+            📕 Open Formatted PDF
           </button>
-          <button class="btn btn-secondary" onclick="openOutputFolder()">
-            📁 Abrir Carpeta
+          <button class="btn btn-secondary" id="btnOpenFolder" onclick="openOutputFolder()">
+            📁 Open Folder
           </button>
-          <button class="btn btn-secondary" onclick="resetToNewSession()">
-            🔄 Nueva Sesión
+          <button class="btn btn-secondary" id="btnNewSession" onclick="resetToNewSession()">
+            🔄 New Session
           </button>
         </div>
 
         <!-- Audio Player -->
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px;">
-          <div style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">
-            🔊 Resumen Narrado en Audio (TTS)
+          <div id="ttsAudioHeader" style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">
+            🔊 Narrated Audio Summary (TTS)
           </div>
           <p id="ttsNarrationText" style="font-size: 13px; margin-bottom: 12px; color: #cbd5e1;"></p>
-          <button class="btn btn-secondary" style="width: auto; padding: 8px 16px;" onclick="openTtsAudioFile()">
-            ▶ Reproducir Audio en el Sistema
+          <button class="btn btn-secondary" id="btnPlayAudio" style="width: auto; padding: 8px 16px;" onclick="openTtsAudioFile()">
+            ▶ Play Audio in System Player
           </button>
         </div>
 
         <!-- Markdown Viewer -->
         <div>
-          <label>Vista Previa de la Guía (.md)</label>
+          <label id="lblMdPreview">Study Guide Preview (.md)</label>
           <div id="markdownPreview" class="markdown-viewer"></div>
         </div>
       </div>
@@ -662,6 +746,110 @@
   </main>
 
   <script>
+    const i18n = {
+      en: {
+        brandSubtitle: "AI-Powered Smart Class Assistant",
+        statusReady: "Ready",
+        statusRecording: "Recording 🔴",
+        tabRecord: "🎙️ Live Recording",
+        tabImport: "📂 Import Recording",
+        lblProvider: "AI Provider",
+        optGemini: "🔵 Google Gemini (Native Audio)",
+        optClaude: "🟠 Anthropic Claude (Whisper + Claude)",
+        lblApiKey: "Provider API Key",
+        apiKeyPlaceholder: "API key for {provider} (optional if configured in .env)",
+        btnValidateKey: "🔑 Validate API Key",
+        providerHelpClaude: "Claude requires local Whisper transcription first. Initial model: large-v3.",
+        providerHelpGemini: "Gemini accepts audio directly via its File API.",
+        keyConfiguredNote: " Key configured in .env.",
+        recCardTitle: "🎙️ Live Class Recording",
+        recCardDesc: "Capture real-time audio from Google Meet, Zoom, or system microphone.",
+        lblRecSubject: "Subject / Class Name",
+        recSubjectPlaceholder: "e.g. Computer Networks",
+        modelLabel: "{provider} Model",
+        lblRecSource: "Audio Source",
+        optSrcBoth: "🔊 Google Meet + 🎙️ Microphone (Recommended)",
+        optSrcMeet: "🔊 Google Meet Only (System Audio)",
+        optSrcMic: "🎙️ Physical Microphone Only",
+        btnStartRec: "▶ Start Recording",
+        btnStopRec: "⏹ Stop Recording & Analyze with {provider}",
+        importCardTitle: "📂 Import Existing Recording",
+        importCardDesc: "Upload a previously recorded video or audio file to process with AI.",
+        dropzoneTitle: "Click to select your recording",
+        dropzoneSubtitle: "Supports MP4, MKV, MP3, WAV, M4A, WEBM",
+        btnChangeFile: "Change",
+        lblImportSubject: "Subject Name",
+        importSubjectPlaceholder: "Subject name for the study guide",
+        btnAnalyzeImport: "🧠 Analyze Recording with {provider}",
+        videoOptTag: " (MP4 Video - Will be auto-optimized)",
+        processingTitle: "🧠 Processing Class with AI",
+        processingSubtitle: "Extracting audio, transcribing, and generating your study guide...",
+        resultsTitle: "✨ Study Guide Generated Successfully!",
+        resultsDesc: "Your class has been analyzed and multi-format deliverables are ready.",
+        btnOpenPdf: "📕 Open Formatted PDF",
+        btnOpenFolder: "📁 Open Folder",
+        btnNewSession: "🔄 New Session",
+        ttsAudioHeader: "🔊 Narrated Audio Summary (TTS)",
+        btnPlayAudio: "▶ Play Audio in System Player",
+        lblMdPreview: "Study Guide Preview (.md)",
+        validating: "Validating {provider}...",
+        enterKeyWarning: "Please enter an API key to validate.",
+        validateError: "Could not validate API key.",
+        loadModelsError: "Could not load provider models."
+      },
+      es: {
+        brandSubtitle: "Asistente Inteligente de Clases con IA",
+        statusReady: "Listo",
+        statusRecording: "Grabando 🔴",
+        tabRecord: "🎙️ Grabar en Vivo",
+        tabImport: "📂 Importar Grabación",
+        lblProvider: "Proveedor de IA",
+        optGemini: "🔵 Google Gemini (Audio nativo)",
+        optClaude: "🟠 Anthropic Claude (Whisper + Claude)",
+        lblApiKey: "API key del proveedor",
+        apiKeyPlaceholder: "API key de {provider} (opcional si está en .env)",
+        btnValidateKey: "🔑 Validar API key",
+        providerHelpClaude: "Claude requiere transcribir primero con Whisper local. Modelo inicial: large-v3.",
+        providerHelpGemini: "Gemini acepta el audio directamente mediante su File API.",
+        keyConfiguredNote: " Clave configurada en .env.",
+        recCardTitle: "🎙️ Grabar Clase en Vivo",
+        recCardDesc: "Captura el audio de Google Meet, Zoom o micrófono del sistema en tiempo real.",
+        lblRecSubject: "Nombre de la Materia / Clase",
+        recSubjectPlaceholder: "Ej. Redes de Computadoras",
+        modelLabel: "Modelo {provider}",
+        lblRecSource: "Fuente de Audio",
+        optSrcBoth: "🔊 Google Meet + 🎙️ Micrófono (Recomendado)",
+        optSrcMeet: "🔊 Solo Google Meet (Audio del Sistema)",
+        optSrcMic: "🎙️ Solo Micrófono Físico",
+        btnStartRec: "▶ Iniciar Grabación",
+        btnStopRec: "⏹ Detener Grabación y Analizar con {provider}",
+        importCardTitle: "📂 Importar Grabación Existente",
+        importCardDesc: "Carga un archivo de video o audio grabado previamente para procesarlo con IA.",
+        dropzoneTitle: "Haz clic para seleccionar tu grabación",
+        dropzoneSubtitle: "Soporta MP4, MKV, MP3, WAV, M4A, WEBM",
+        btnChangeFile: "Cambiar",
+        lblImportSubject: "Nombre de la Materia",
+        importSubjectPlaceholder: "Nombre de la materia para la guía",
+        btnAnalyzeImport: "🧠 Analizar Grabación con {provider}",
+        videoOptTag: " (Video MP4 - Se optimizará automáticamente)",
+        processingTitle: "🧠 Procesando Clase con IA",
+        processingSubtitle: "Extrayendo audio, transcribiendo y estructurando tu guía pedagógica...",
+        resultsTitle: "✨ ¡Guía Generada Exitosamente!",
+        resultsDesc: "Tu clase ha sido analizada y los entregables multiformato están listos.",
+        btnOpenPdf: "📕 Abrir PDF Maquetado",
+        btnOpenFolder: "📁 Abrir Carpeta",
+        btnNewSession: "🔄 Nueva Sesión",
+        ttsAudioHeader: "🔊 Resumen Narrado en Audio (TTS)",
+        btnPlayAudio: "▶ Reproducir Audio en el Sistema",
+        lblMdPreview: "Vista Previa de la Guía (.md)",
+        validating: "Validando {provider}...",
+        enterKeyWarning: "Ingresa una API key para validarla.",
+        validateError: "No se pudo validar la API key.",
+        loadModelsError: "No se pudieron cargar los modelos del proveedor."
+      }
+    };
+
+    let currentLang = 'en'; // Default English
     let activeTab = 'record';
     let currentSelectedPath = null;
     let timerInterval = null;
@@ -669,9 +857,86 @@
     let currentArtifacts = null;
     let selectedModel = 'gemini-3.7-flash';
     let selectedProvider = 'gemini';
+    let isRecordingState = false;
+
+    function t(key, params = {}) {
+      const dict = i18n[currentLang] || i18n.en;
+      let text = dict[key] || i18n.en[key] || key;
+      for (const [k, v] of Object.entries(params)) {
+        text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+      }
+      return text;
+    }
 
     function providerLabel(provider = selectedProvider) {
       return provider === 'anthropic' ? 'Anthropic Claude' : 'Google Gemini';
+    }
+
+    function applyLanguage(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang;
+
+      // Update switcher UI
+      const labelEn = document.getElementById('labelEN');
+      const labelEs = document.getElementById('labelES');
+      const toggle = document.getElementById('langToggle');
+      if (labelEn) labelEn.classList.toggle('active', lang === 'en');
+      if (labelEs) labelEs.classList.toggle('active', lang === 'es');
+      if (toggle) toggle.checked = (lang === 'es');
+
+      // Update texts
+      const updateEl = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+      };
+
+      updateEl('brandSubtitle', t('brandSubtitle'));
+      updateEl('statusText', isRecordingState ? t('statusRecording') : t('statusReady'));
+      updateEl('tabRecordBtn', t('tabRecord'));
+      updateEl('tabImportBtn', t('tabImport'));
+      updateEl('lblProvider', t('lblProvider'));
+      updateEl('optGemini', t('optGemini'));
+      updateEl('optClaude', t('optClaude'));
+      updateEl('lblApiKey', t('lblApiKey'));
+      updateEl('btnValidateKey', t('btnValidateKey'));
+
+      updateEl('recCardTitle', t('recCardTitle'));
+      updateEl('recCardDesc', t('recCardDesc'));
+      updateEl('lblRecSubject', t('lblRecSubject'));
+      const recSub = document.getElementById('recSubject');
+      if (recSub) recSub.placeholder = t('recSubjectPlaceholder');
+
+      updateEl('lblRecSource', t('lblRecSource'));
+      updateEl('optSrcBoth', t('optSrcBoth'));
+      updateEl('optSrcMeet', t('optSrcMeet'));
+      updateEl('optSrcMic', t('optSrcMic'));
+      updateEl('btnStartRec', t('btnStartRec'));
+
+      updateEl('importCardTitle', t('importCardTitle'));
+      updateEl('importCardDesc', t('importCardDesc'));
+      updateEl('dropzoneTitle', t('dropzoneTitle'));
+      updateEl('dropzoneSubtitle', t('dropzoneSubtitle'));
+      updateEl('btnChangeFile', t('btnChangeFile'));
+      updateEl('lblImportSubject', t('lblImportSubject'));
+      const impSub = document.getElementById('importSubject');
+      if (impSub) impSub.placeholder = t('importSubjectPlaceholder');
+
+      updateEl('processingTitle', t('processingTitle'));
+      updateEl('processingSubtitle', t('processingSubtitle'));
+      updateEl('resultsTitle', t('resultsTitle'));
+      updateEl('resultsDesc', t('resultsDesc'));
+      updateEl('btnOpenPdf', t('btnOpenPdf'));
+      updateEl('btnOpenFolder', t('btnOpenFolder'));
+      updateEl('btnNewSession', t('btnNewSession'));
+      updateEl('ttsAudioHeader', t('ttsAudioHeader'));
+      updateEl('btnPlayAudio', t('btnPlayAudio'));
+      updateEl('lblMdPreview', t('lblMdPreview'));
+
+      updateProviderCopy();
+    }
+
+    function onLanguageToggle(isChecked) {
+      applyLanguage(isChecked ? 'es' : 'en');
     }
 
     function getApiKeyInput() {
@@ -681,14 +946,21 @@
     function updateProviderCopy() {
       const label = providerLabel();
       const isClaude = selectedProvider === 'anthropic';
-      document.getElementById('recModelLabel').innerText = `Modelo ${label}`;
-      document.getElementById('importModelLabel').innerText = `Modelo ${label}`;
-      document.getElementById('btnStopRec').innerText = `⏹ Detener Grabación y Analizar con ${label}`;
-      document.getElementById('btnAnalyzeImport').innerText = `🧠 Analizar Grabación con ${label}`;
-      document.getElementById('providerHelp').innerText = isClaude
-        ? 'Claude requiere transcribir primero con Whisper local. Modelo inicial: large-v3.'
-        : 'Gemini acepta el audio directamente mediante su File API.';
-      document.getElementById('apiKeyInput').placeholder = `API key de ${label} (opcional si está en .env)`;
+      const recModelLbl = document.getElementById('recModelLabel');
+      const impModelLbl = document.getElementById('importModelLabel');
+      const btnStop = document.getElementById('btnStopRec');
+      const btnAna = document.getElementById('btnAnalyzeImport');
+      const help = document.getElementById('providerHelp');
+      const keyInp = document.getElementById('apiKeyInput');
+
+      if (recModelLbl) recModelLbl.innerText = t('modelLabel', { provider: label });
+      if (impModelLbl) impModelLbl.innerText = t('modelLabel', { provider: label });
+      if (btnStop) btnStop.innerText = t('btnStopRec', { provider: label });
+      if (btnAna) btnAna.innerText = t('btnAnalyzeImport', { provider: label });
+      if (help) {
+        help.innerText = isClaude ? t('providerHelpClaude') : t('providerHelpGemini');
+      }
+      if (keyInp) keyInp.placeholder = t('apiKeyPlaceholder', { provider: label });
     }
 
     function populateModelOptions(models, selected = null) {
@@ -697,6 +969,7 @@
         document.getElementById('importModelSelect')
       ];
       selects.forEach(select => {
+        if (!select) return;
         select.innerHTML = '';
         (models || []).forEach(model => {
           const option = document.createElement('option');
@@ -717,8 +990,8 @@
       selectedModel = val;
       const recSelect = document.getElementById('recModelSelect');
       const importSelect = document.getElementById('importModelSelect');
-      if ([...recSelect.options].some(option => option.value === val)) recSelect.value = val;
-      if ([...importSelect.options].some(option => option.value === val)) importSelect.value = val;
+      if (recSelect && [...recSelect.options].some(option => option.value === val)) recSelect.value = val;
+      if (importSelect && [...importSelect.options].some(option => option.value === val)) importSelect.value = val;
     }
 
     async function onProviderChange(provider) {
@@ -733,10 +1006,10 @@
         const state = await window.pywebview.api.get_provider_state(provider, '');
         populateModelOptions(state.available_models, state.model);
         if (state.has_api_key) {
-          document.getElementById('providerHelp').innerText += ' Clave configurada en .env.';
+          document.getElementById('providerHelp').innerText += t('keyConfiguredNote');
         }
       } catch (err) {
-        document.getElementById('validationMessage').innerText = 'No se pudieron cargar los modelos del proveedor.';
+        document.getElementById('validationMessage').innerText = t('loadModelsError');
         document.getElementById('validationMessage').className = 'validation-message error';
       }
     }
@@ -745,12 +1018,12 @@
       const key = getApiKeyInput();
       const message = document.getElementById('validationMessage');
       if (!key) {
-        message.innerText = 'Ingresa una API key para validarla.';
+        message.innerText = t('enterKeyWarning');
         message.className = 'validation-message error';
         return;
       }
 
-      message.innerText = `Validando ${providerLabel()}...`;
+      message.innerText = t('validating', { provider: providerLabel() });
       message.className = 'validation-message';
       try {
         const result = await window.pywebview.api.validate_api_key(selectedProvider, key);
@@ -760,7 +1033,7 @@
           populateModelOptions(result.models, selectedModel);
         }
       } catch (err) {
-        message.innerText = 'No se pudo validar la API key.';
+        message.innerText = t('validateError');
         message.className = 'validation-message error';
       }
     }
@@ -768,8 +1041,10 @@
     function switchTab(tab) {
       activeTab = tab;
       const tabBtns = document.querySelectorAll('.tab-button');
-      tabBtns[0].classList.toggle('active', tab === 'record');
-      tabBtns[1].classList.toggle('active', tab === 'import');
+      if (tabBtns.length >= 2) {
+        tabBtns[0].classList.toggle('active', tab === 'record');
+        tabBtns[1].classList.toggle('active', tab === 'import');
+      }
 
       document.getElementById('recordSection').classList.toggle('hidden', tab !== 'record');
       document.getElementById('importSection').classList.toggle('hidden', tab !== 'import');
@@ -786,7 +1061,8 @@
 
     // LIVE RECORDING
     async function startLiveRecording() {
-      const subject = document.getElementById('recSubject').value.trim() || 'Clase';
+      const defaultSub = currentLang === 'es' ? 'Clase' : 'Class';
+      const subject = document.getElementById('recSubject').value.trim() || defaultSub;
       const source = document.getElementById('recSource').value;
 
       try {
@@ -794,7 +1070,7 @@
         if (res.status === 'success') {
           setRecordingUI(true);
         } else {
-          alert("Error iniciando grabación: " + res.message);
+          alert("Error: " + res.message);
         }
       } catch (err) {
         console.error(err);
@@ -802,6 +1078,7 @@
     }
 
     function setRecordingUI(isRec) {
+      isRecordingState = isRec;
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
       const btnStart = document.getElementById('btnStartRec');
@@ -811,7 +1088,7 @@
 
       if (isRec) {
         statusDot.className = 'status-dot active';
-        statusText.innerText = 'Grabando 🔴';
+        statusText.innerText = t('statusRecording');
         btnStart.classList.add('hidden');
         btnStop.classList.remove('hidden');
         timerDisplay.classList.add('recording');
@@ -826,7 +1103,7 @@
         }, 1000);
       } else {
         statusDot.className = 'status-dot ready';
-        statusText.innerText = 'Listo';
+        statusText.innerText = t('statusReady');
         btnStart.classList.remove('hidden');
         btnStop.classList.add('hidden');
         timerDisplay.classList.remove('recording');
@@ -838,7 +1115,7 @@
     async function stopLiveRecording() {
       setRecordingUI(false);
       const label = providerLabel();
-      showProcessing("🧠 Procesando Grabación", `Procesando con ${label} (${selectedModel}) y generando guía...`);
+      showProcessing(t('processingTitle'), `${t('processingSubtitle')} (${label})`);
 
       try {
         const res = await window.pywebview.api.stop_recording_and_process();
@@ -849,16 +1126,17 @@
             session.subject,
             selectedModel,
             selectedProvider,
-            getApiKeyInput()
+            getApiKeyInput(),
+            currentLang
           );
           if (analysisRes.status === 'success') {
             showResults(analysisRes.artifacts);
           } else {
-            alert("Error en análisis: " + analysisRes.message);
+            alert("Error: " + analysisRes.message);
             switchTab('record');
           }
         } else {
-          alert("Error deteniendo grabación: " + res.message);
+          alert("Error: " + res.message);
           switchTab('record');
         }
       } catch (err) {
@@ -874,7 +1152,7 @@
         if (res.status === 'success') {
           currentSelectedPath = res.path;
           document.getElementById('fileName').innerText = res.filename;
-          document.getElementById('fileSize').innerText = res.size_str + (res.is_video ? " (Video MP4 - Se optimizará automáticamente)" : "");
+          document.getElementById('fileSize').innerText = res.size_str + (res.is_video ? t('videoOptTag') : "");
           document.getElementById('fileIcon').innerText = res.is_video ? "🎬" : "🎧";
           document.getElementById('dropzone').classList.add('hidden');
           document.getElementById('selectedFileCard').classList.remove('hidden');
@@ -894,9 +1172,10 @@
 
     async function analyzeImportedFile() {
       if (!currentSelectedPath) return;
-      const subject = document.getElementById('importSubject').value.trim() || 'Clase';
+      const defaultSub = currentLang === 'es' ? 'Clase' : 'Class';
+      const subject = document.getElementById('importSubject').value.trim() || defaultSub;
 
-      showProcessing("🧠 Analizando Archivo con IA", `Procesando con ${providerLabel()} (${selectedModel}) y generando tu guía pedagógica...`);
+      showProcessing(t('processingTitle'), `${t('processingSubtitle')} (${providerLabel()})`);
 
       try {
         const res = await window.pywebview.api.run_analysis(
@@ -904,12 +1183,13 @@
           subject,
           selectedModel,
           selectedProvider,
-          getApiKeyInput()
+          getApiKeyInput(),
+          currentLang
         );
         if (res.status === 'success') {
           showResults(res.artifacts);
         } else {
-          alert("Error durante el análisis: " + res.message);
+          alert("Error: " + res.message);
           switchTab('import');
         }
       } catch (err) {
@@ -971,13 +1251,16 @@
     // INIT STATE CHECK
     window.addEventListener('pywebviewready', async () => {
       try {
+        // Initialize interface in English by default
+        applyLanguage('en');
+
         const state = await window.pywebview.api.get_initial_state();
         selectedProvider = state.provider || 'gemini';
         document.getElementById('providerSelect').value = selectedProvider;
         updateProviderCopy();
         populateModelOptions(state.available_models, state.model);
         if (state.has_api_key) {
-          document.getElementById('providerHelp').innerText += ' Clave configurada en .env.';
+          document.getElementById('providerHelp').innerText += t('keyConfiguredNote');
         }
         if (state.is_recording && state.active_session) {
           document.getElementById('recSubject').value = state.active_session.subject || '';

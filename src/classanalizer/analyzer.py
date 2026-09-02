@@ -10,7 +10,7 @@ from google.genai import types
 from classanalizer.base_analyzer import BaseAnalyzer
 from classanalizer.config import GEMINI_API_KEY, GEMINI_MODEL
 from classanalizer.platform_utils import get_ffmpeg_binary
-from classanalizer.prompts import SYSTEM_PROMPT, ANALYSIS_PROMPT_TEMPLATE
+from classanalizer.prompts import get_prompts
 
 
 class GeminiAnalyzer(BaseAnalyzer):
@@ -60,7 +60,13 @@ class GeminiAnalyzer(BaseAnalyzer):
             return temp_audio, True
         return file_path, False
 
-    def _call_gemini_with_resilience(self, audio_file_upload, prompt: str, primary_model: str):
+    def _call_gemini_with_resilience(
+        self,
+        audio_file_upload,
+        prompt: str,
+        primary_model: str,
+        system_prompt: Optional[str] = None,
+    ):
         # Modelos flash permitidos en orden de fallback
         candidate_models = [primary_model, "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"]
         seen = set()
@@ -74,7 +80,7 @@ class GeminiAnalyzer(BaseAnalyzer):
                         model=model_name,
                         contents=[audio_file_upload, prompt],
                         config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM_PROMPT,
+                            system_instruction=system_prompt,
                             temperature=0.3
                         )
                     )
@@ -93,7 +99,14 @@ class GeminiAnalyzer(BaseAnalyzer):
                     raise e
         raise last_error
 
-    def analyze_audio(self, audio_path: Path, subject: str = "Clase", date_str: str = "", model: Optional[str] = None) -> tuple[str, str]:
+    def analyze_audio(
+        self,
+        audio_path: Path,
+        subject: str = "Clase",
+        date_str: str = "",
+        model: Optional[str] = None,
+        language: Optional[str] = "auto",
+    ) -> tuple[str, str]:
         """
         Sube el audio/video a Gemini, analiza la clase y devuelve: (markdown_guia, resumen_tts)
         """
@@ -116,14 +129,20 @@ class GeminiAnalyzer(BaseAnalyzer):
             if audio_file_upload.state.name == "FAILED":
                 raise RuntimeError(f"Error procesando el archivo en Gemini: {audio_file_upload.error.message}")
 
-            # 3. Formular prompt
-            prompt = ANALYSIS_PROMPT_TEMPLATE.format(
+            # 3. Formular prompt según el idioma solicitado
+            system_prompt, prompt = get_prompts(
                 subject=subject,
-                date=date_str or time.strftime("%Y-%m-%d")
+                date_str=date_str or time.strftime("%Y-%m-%d"),
+                language=language or "auto",
             )
 
             # 4. Invocar modelo seleccionado con reintentos
-            full_text = self._call_gemini_with_resilience(audio_file_upload, prompt, primary_model=selected_model)
+            full_text = self._call_gemini_with_resilience(
+                audio_file_upload,
+                prompt,
+                primary_model=selected_model,
+                system_prompt=system_prompt,
+            )
 
             # 5. Limpieza del archivo subido en Google Cloud
             try:
