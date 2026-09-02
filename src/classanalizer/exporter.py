@@ -1,10 +1,10 @@
 import asyncio
 from pathlib import Path
 import markdown
-import weasyprint
 import edge_tts
 
 from classanalizer.config import TTS_VOICE
+from classanalizer.platform import IS_WINDOWS
 
 ACADEMIC_CSS = """
 @page {
@@ -103,6 +103,53 @@ hr {
 }
 """
 
+XHTML2PDF_CSS = """
+@page {
+    size: A4;
+    margin: 20mm 15mm 20mm 15mm;
+    @frame footer_frame {
+        -pdf-frame-content: footerContent;
+        left: 15mm;
+        width: 180mm;
+        top: 275mm;
+        height: 10mm;
+    }
+}
+
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    line-height: 1.45;
+    color: #2d3748;
+    font-size: 11pt;
+}
+
+h1 {
+    color: #1a365d;
+    font-size: 20pt;
+    border-bottom: 2px solid #3182ce;
+    padding-bottom: 6px;
+    margin-top: 0;
+}
+
+h2 {
+    color: #2b6cb0;
+    font-size: 14pt;
+    margin-top: 18px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+}
+
+h3 { color: #2d3748; font-size: 12pt; }
+code { font-family: Courier, monospace; font-size: 9.5pt; }
+blockquote { border-left: 4px solid #3182ce; padding-left: 12px; color: #2c5282; }
+
+#footerContent {
+    color: #718096;
+    font-size: 9pt;
+    text-align: center;
+}
+"""
+
 class Exporter:
     @staticmethod
     def export_markdown(markdown_content: str, output_path: Path) -> Path:
@@ -120,6 +167,27 @@ class Exporter:
             extensions=["extra", "codehilite", "nl2br", "sane_lists", "toc"]
         )
         
+        if IS_WINDOWS:
+            full_html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Guía de Estudio</title>
+    <style>{XHTML2PDF_CSS}</style>
+</head>
+<body>
+<div id="footerContent">Página <pdf:pagenumber/> de <pdf:pagecount/></div>
+{html_body}
+</body>
+</html>"""
+            from xhtml2pdf import pisa
+
+            with output_path.open("wb") as pdf_file:
+                result = pisa.CreatePDF(full_html, dest=pdf_file, encoding="utf-8")
+            if result.err:
+                raise RuntimeError("xhtml2pdf no pudo generar el documento PDF.")
+            return output_path
+
         full_html = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -131,7 +199,11 @@ class Exporter:
 {html_body}
 </body>
 </html>"""
-        
+
+        # WeasyPrint se importa únicamente en Linux para no exigir Pango/Cairo
+        # a la distribución portable de Windows.
+        import weasyprint
+
         weasyprint.HTML(string=full_html).write_pdf(target=str(output_path))
         return output_path
 
