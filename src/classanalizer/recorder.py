@@ -2,16 +2,22 @@ import json
 import os
 import signal
 import subprocess
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
 from classanalizer.config import SESSION_FILE, OUTPUT_DIR
+from classanalizer.platform_utils import IS_WINDOWS, get_ffmpeg_binary, is_process_alive
 
 
 class AudioRecorder:
-    """Gestiona la grabación de audio en segundo plano usando ffmpeg y PulseAudio/PipeWire."""
+    """Gestiona la grabación usando PulseAudio/PipeWire o WASAPI en Windows."""
+
+    @staticmethod
+    def _is_process_alive(pid: int) -> bool:
+        return is_process_alive(pid)
 
     @staticmethod
     def is_recording() -> bool:
@@ -22,9 +28,7 @@ class AudioRecorder:
             pid = data.get("pid")
             if not pid:
                 return False
-            # Comprobar si el proceso sigue vivo
-            os.kill(pid, 0)
-            return True
+            return AudioRecorder._is_process_alive(int(pid))
         except (OSError, ValueError, json.JSONDecodeError):
             if SESSION_FILE.exists():
                 SESSION_FILE.unlink(missing_ok=True)
@@ -69,32 +73,61 @@ class AudioRecorder:
         audio_file = class_dir / f"grabacion_{time_str}.mp3"
         log_file = class_dir / f"ffmpeg_{time_str}.log"
 
-        cmd = ["ffmpeg", "-y", "-nostdin", "-loglevel", "warning"]
+        if source not in {"meet", "mic", "both"}:
+            raise ValueError("La fuente debe ser 'meet', 'mic' o 'both'.")
 
-        if source == "meet":
-            cmd.extend(["-f", "pulse", "-i", "@DEFAULT_SINK@.monitor"])
-        elif source == "mic":
-            cmd.extend(["-f", "pulse", "-i", "@DEFAULT_SOURCE@"])
-        else:  # both
-            cmd.extend([
-                "-f", "pulse", "-i", "@DEFAULT_SINK@.monitor",
-                "-f", "pulse", "-i", "@DEFAULT_SOURCE@",
-                "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=longest[aout]",
-                "-map", "[aout]"
-            ])
+        if IS_WINDOWS:
+            stop_file = class_dir / f".stop_{time_str}.signal"
+            stop_file.unlink(missing_ok=True)
+            cmd = [
+                sys.executable,
+                "-m",
+                "classanalizer.recorder_windows",
+                "--output",
+                str(audio_file),
+                "--source",
+                source,
+                "--stop-file",
+                str(stop_file),
+            ]
+        else:
+            cmd = [get_ffmpeg_binary(), "-y", "-nostdin", "-loglevel", "warning"]
 
-        # Formato de audio comprimido optimizado para voz
-        cmd.extend(["-c:a", "libmp3lame", "-b:a", "96k", "-ar", "44100", str(audio_file)])
+            if source == "meet":
+                cmd.extend(["-f", "pulse", "-i", "@DEFAULT_SINK@.monitor"])
+            elif source == "mic":
+                cmd.extend(["-f", "pulse", "-i", "@DEFAULT_SOURCE@"])
+            else:  # both
+                cmd.extend([
+                    "-f", "pulse", "-i", "@DEFAULT_SINK@.monitor",
+                    "-f", "pulse", "-i", "@DEFAULT_SOURCE@",
+                    "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=longest[aout]",
+                    "-map", "[aout]"
+                ])
 
-        # Lanzar proceso en segundo plano desconectado de stdin
+            # Formato de audio comprimido optimizado para voz
+            cmd.extend(["-c:a", "libmp3lame", "-b:a", "96k", "-ar", "44100", str(audio_file)])
+
+        # El worker de Windows se separa de la consola para que la CLI pueda salir.
+        creationflags = 0
+        if IS_WINDOWS:
+            creationflags = (
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                | getattr(subprocess, "DETACHED_PROCESS", 0)
+            )
+
         log_handle = open(log_file, "w", encoding="utf-8")
-        process = subprocess.Popen(
-            cmd,
-            stdin=subprocess.DEVNULL,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            start_new_session=True
-        )
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                start_new_session=not IS_WINDOWS,
+                creationflags=creationflags,
+            )
+        finally:
+            log_handle.close()
 
         session_data = {
             "pid": process.pid,
@@ -106,8 +139,11 @@ class AudioRecorder:
             "start_iso": now.isoformat(),
             "audio_file": str(audio_file),
             "output_dir": str(class_dir),
-            "log_file": str(log_file)
+            "log_file": str(log_file),
+            "backend": "wasapi" if IS_WINDOWS else "pulse",
         }
+        if IS_WINDOWS:
+            session_data["stop_file"] = str(stop_file)
 
         SESSION_FILE.write_text(json.dumps(session_data, indent=2), encoding="utf-8")
         return session_data
@@ -126,21 +162,37 @@ class AudioRecorder:
 
         pid = data.get("pid")
         if pid:
-            try:
-                # Enviar SIGINT para que ffmpeg cierre el archivo MP3 correctamente
-                os.kill(pid, signal.SIGINT)
-                # Esperar hasta 5 segundos a que termine
+            if IS_WINDOWS:
+                stop_file_raw = data.get("stop_file")
+                if stop_file_raw:
+                    Path(stop_file_raw).touch()
                 for _ in range(50):
-                    time.sleep(0.1)
-                    try:
-                        os.kill(pid, 0)
-                    except OSError:
+                    if not AudioRecorder._is_process_alive(int(pid)):
                         break
+                    time.sleep(0.1)
                 else:
-                    # Si no termina con SIGINT, forzar SIGTERM
-                    os.kill(pid, signal.SIGTERM)
-            except OSError:
-                pass  # Ya terminó
+                    subprocess.run(
+                        ["taskkill", "/PID", str(pid), "/T", "/F"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+            else:
+                try:
+                    # Enviar SIGINT para que ffmpeg cierre el archivo MP3 correctamente
+                    os.kill(pid, signal.SIGINT)
+                    # Esperar hasta 5 segundos a que termine
+                    for _ in range(50):
+                        time.sleep(0.1)
+                        try:
+                            os.kill(pid, 0)
+                        except OSError:
+                            break
+                    else:
+                        # Si no termina con SIGINT, forzar SIGTERM
+                        os.kill(pid, signal.SIGTERM)
+                except OSError:
+                    pass  # Ya terminó
 
         SESSION_FILE.unlink(missing_ok=True)
         start_time = data.get("start_timestamp", time.time())

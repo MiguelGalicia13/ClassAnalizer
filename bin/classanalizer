@@ -22,4 +22,4 @@ fi
 export WEBKIT_DISABLE_COMPOSITING_MODE=0
 
 # Ejecutar ClassAnalizer
-exec uv run --directory "$SCRIPT_DIR" python "$SCRIPT_DIR/src/classanalizer/cli.py" "$@"
+exec uv run --directory "$SCRIPT_DIR" classanalizer "$@"

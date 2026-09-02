@@ -1,7 +1,4 @@
 import json
-import os
-import subprocess
-import sys
 import threading
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -9,9 +6,46 @@ from typing import Optional, Dict, Any
 import webview
 
 from classanalizer.recorder import AudioRecorder
-from classanalizer.analyzer import GeminiAnalyzer
+from classanalizer.analyzer_factory import (
+    fallback_models_for_provider,
+    list_models_for_provider,
+    normalize_provider,
+    validate_provider_key,
+    create_analyzer,
+)
 from classanalizer.exporter import Exporter
-from classanalizer.config import OUTPUT_DIR, TTS_VOICE, GEMINI_MODEL, GEMINI_API_KEY
+from classanalizer.config import (
+    AI_PROVIDER,
+    ANTHROPIC_API_KEY,
+    ANTHROPIC_MODEL,
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    OUTPUT_DIR,
+    TTS_VOICE,
+)
+from classanalizer.platform_utils import get_gui_backend, open_in_system_viewer
+
+
+def get_configured_api_key(provider: str) -> str:
+    """Devuelve únicamente la clave configurada para un proveedor."""
+    return ANTHROPIC_API_KEY if provider == "anthropic" else GEMINI_API_KEY
+
+
+def get_configured_model(provider: str) -> str:
+    """Devuelve el modelo predeterminado del proveedor."""
+    if provider == "anthropic":
+        return ANTHROPIC_MODEL or "claude-sonnet-5"
+    return GEMINI_MODEL or "gemini-3.7-flash"
+
+
+def get_models_for_ui(provider: str, api_key: str) -> list[dict[str, Any]]:
+    """Obtiene modelos remotos y conserva opciones conocidas si falla la red."""
+    if not api_key:
+        return fallback_models_for_provider(provider)
+    try:
+        return list_models_for_provider(provider, api_key=api_key)
+    except Exception:
+        return fallback_models_for_provider(provider)
 
 
 class DesktopBridgeApi:
@@ -24,19 +58,57 @@ class DesktopBridgeApi:
     def get_initial_state(self) -> Dict[str, Any]:
         """Devuelve el estado inicial del sistema al cargar la UI."""
         session = AudioRecorder.get_session_info()
+        provider = normalize_provider(AI_PROVIDER)
+        provider_key = get_configured_api_key(provider)
+        model = get_configured_model(provider)
+        available_models = get_models_for_ui(provider, provider_key)
         return {
-            "has_api_key": bool(GEMINI_API_KEY),
-            "model": GEMINI_MODEL or "gemini-3.7-flash",
-            "available_models": [
-                {"id": "gemini-3.7-flash", "name": "Gemini 3.7 Flash (Recomendado / Más Reciente)"},
-                {"id": "gemini-3.6-flash", "name": "Gemini 3.6 Flash"},
-                {"id": "gemini-3.5-flash", "name": "Gemini 3.5 Flash"},
-                {"id": "gemini-flash-latest", "name": "Gemini Flash Latest"}
-            ],
+            "provider": provider,
+            "has_api_key": bool(provider_key),
+            "api_key_configured": {
+                "gemini": bool(GEMINI_API_KEY),
+                "anthropic": bool(ANTHROPIC_API_KEY),
+            },
+            "model": model,
+            "available_models": available_models,
             "output_dir": str(OUTPUT_DIR),
             "is_recording": AudioRecorder.is_recording(),
             "active_session": session
         }
+
+    def get_provider_state(
+        self,
+        provider: str,
+        api_key: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Devuelve modelos y estado de credenciales para el proveedor elegido."""
+        selected_provider = normalize_provider(provider)
+        configured_key = api_key.strip() if api_key and api_key.strip() else get_configured_api_key(selected_provider)
+        return {
+            "provider": selected_provider,
+            "has_api_key": bool(configured_key),
+            "model": get_configured_model(selected_provider),
+            "available_models": get_models_for_ui(selected_provider, configured_key),
+        }
+
+    def validate_api_key(self, provider: str, api_key: str) -> Dict[str, Any]:
+        """Valida una API key y retorna los modelos accesibles sin exponerla."""
+        if not api_key or not api_key.strip():
+            return {"is_valid": False, "message": "Ingresa una API key para validarla."}
+
+        selected_provider = normalize_provider(provider)
+        is_valid, message = validate_provider_key(selected_provider, api_key.strip())
+        result: Dict[str, Any] = {"is_valid": is_valid, "message": message}
+        if is_valid:
+            try:
+                models = list_models_for_provider(selected_provider, api_key=api_key.strip())
+                result["models"] = [
+                    {"id": model["id"], "name": model["name"]}
+                    for model in models
+                ]
+            except Exception:
+                result["models"] = fallback_models_for_provider(selected_provider)
+        return result
 
     def select_file_dialog(self) -> Dict[str, Any]:
         """Abre un diálogo nativo de Linux para seleccionar un archivo de audio o video."""
@@ -88,8 +160,15 @@ class DesktopBridgeApi:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def run_analysis(self, file_path: str, subject: str, model: Optional[str] = None) -> Dict[str, Any]:
-        """Procesa un archivo de audio/video con el modelo Flash seleccionado."""
+    def run_analysis(
+        self,
+        file_path: str,
+        subject: str,
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Procesa un archivo con el proveedor y modelo seleccionados."""
         try:
             path_obj = Path(file_path).resolve()
             if not path_obj.exists():
@@ -102,7 +181,12 @@ class DesktopBridgeApi:
             out_dir = OUTPUT_DIR / safe_subject / time_now_date()
             out_dir.mkdir(parents=True, exist_ok=True)
 
-            analyzer = GeminiAnalyzer()
+            selected_provider = normalize_provider(provider)
+            analyzer = create_analyzer(
+                provider=selected_provider,
+                api_key=api_key.strip() if api_key and api_key.strip() else None,
+                model=model,
+            )
             markdown_text, tts_text = analyzer.analyze_audio(path_obj, subject=subject, model=model)
 
             md_file = out_dir / "guia_estudio.md"
@@ -129,11 +213,7 @@ class DesktopBridgeApi:
 
     def open_path_in_system(self, target_path: str):
         """Abre un archivo o carpeta en el visor predeterminado del sistema operativo."""
-        try:
-            subprocess.run(["xdg-open", target_path], check=False)
-            return {"status": "success"}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        return open_in_system_viewer(target_path)
 
 
 def time_now_date() -> str:
@@ -155,7 +235,7 @@ def launch_gui():
         background_color="#0f172a"
     )
     api.set_window(window)
-    webview.start(gui="qt", debug=False)
+    webview.start(gui=get_gui_backend(), debug=False)
 
 
 if __name__ == "__main__":
