@@ -1,5 +1,7 @@
 # 🎓 ClassAnalizer
 
+**Español** | [English](README_EN.md)
+
 **ClassAnalizer** es un asistente y grabador inteligente para clases virtuales (Google Meet, Zoom, Teams) o presenciales. Funciona en Linux (PipeWire/PulseAudio) y en Windows 10/11 x64 (WASAPI Loopback). Procesa el audio con **Google Gemini** o **Anthropic Claude**, generando automáticamente guías de estudio completas en Markdown, PDF y narraciones en audio (TTS).
 
 Cuenta tanto con una **Aplicación de Escritorio Gráfica (GUI)** moderna como con una **CLI** y una **Skill para OpenClaw**.
