@@ -9,7 +9,7 @@ from google.genai import types
 
 from classanalizer.base_analyzer import BaseAnalyzer
 from classanalizer.config import GEMINI_API_KEY, GEMINI_MODEL
-from classanalizer.platform import get_ffmpeg_binary
+from classanalizer.platform_utils import get_ffmpeg_binary
 from classanalizer.prompts import SYSTEM_PROMPT, ANALYSIS_PROMPT_TEMPLATE
 
 

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-from classanalizer.platform import get_default_output_dir, get_session_file_path
+from classanalizer.platform_utils import get_default_output_dir, get_session_file_path
 
 # Cargar variables desde .env local o raíz del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent.parent

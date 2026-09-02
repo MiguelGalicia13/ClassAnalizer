@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 from classanalizer.config import SESSION_FILE, OUTPUT_DIR
-from classanalizer.platform import IS_WINDOWS, get_ffmpeg_binary, is_process_alive
+from classanalizer.platform_utils import IS_WINDOWS, get_ffmpeg_binary, is_process_alive
 
 
 class AudioRecorder:

@@ -5,7 +5,7 @@ import subprocess
 import wave
 from pathlib import Path
 
-from classanalizer.platform import get_ffmpeg_binary
+from classanalizer.platform_utils import get_ffmpeg_binary
 
 
 OUTPUT_SAMPLE_RATE = 44_100

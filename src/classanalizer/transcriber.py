@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from classanalizer.config import WHISPER_MODEL
-from classanalizer.platform import get_ffmpeg_binary
+from classanalizer.platform_utils import get_ffmpeg_binary
 
 
 class Transcriber:

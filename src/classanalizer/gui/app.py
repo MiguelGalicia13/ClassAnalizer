@@ -23,7 +23,7 @@ from classanalizer.config import (
     OUTPUT_DIR,
     TTS_VOICE,
 )
-from classanalizer.platform import get_gui_backend, open_in_system_viewer
+from classanalizer.platform_utils import get_gui_backend, open_in_system_viewer
 
 
 def get_configured_api_key(provider: str) -> str:
