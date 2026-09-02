@@ -167,6 +167,7 @@ class DesktopBridgeApi:
         model: Optional[str] = None,
         provider: Optional[str] = None,
         api_key: Optional[str] = None,
+        language: Optional[str] = "auto",
     ) -> Dict[str, Any]:
         """Procesa un archivo con el proveedor y modelo seleccionados."""
         try:
@@ -187,15 +188,20 @@ class DesktopBridgeApi:
                 api_key=api_key.strip() if api_key and api_key.strip() else None,
                 model=model,
             )
-            markdown_text, tts_text = analyzer.analyze_audio(path_obj, subject=subject, model=model)
+            markdown_text, tts_text = analyzer.analyze_audio(
+                path_obj,
+                subject=subject,
+                model=model,
+                language=language,
+            )
 
             md_file = out_dir / "guia_estudio.md"
             pdf_file = out_dir / "guia_estudio.pdf"
             tts_file = out_dir / "resumen_audio.mp3"
 
             Exporter.export_markdown(markdown_text, md_file)
-            Exporter.export_pdf(markdown_text, pdf_file)
-            Exporter.export_tts_audio(tts_text, tts_file, voice=TTS_VOICE)
+            Exporter.export_pdf(markdown_text, pdf_file, language=language)
+            Exporter.export_tts_audio(tts_text, tts_file, language=language)
 
             return {
                 "status": "success",

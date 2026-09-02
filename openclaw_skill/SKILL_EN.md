@@ -1,4 +1,4 @@
-﻿---
+---
 name: class-analizer
 description: Records virtual classes (Google Meet, Zoom, Teams) and automatically generates study guides in Markdown, PDF, and audio narration (TTS) using Google Gemini or Anthropic Claude.
 ---
@@ -26,4 +26,5 @@ The default provider is configured via `AI_PROVIDER=gemini` or `AI_PROVIDER=anth
    - Execution: `uv run python openclaw_skill/bridge.py --action stop --json`
    - The agent receives the paths to the generated Markdown file, PDF document, and TTS audio narration, and can deliver the summary directly to the user via Telegram/WhatsApp/Discord.
 
-To specify a provider or model on demand, append `--provider anthropic` and `--model claude-sonnet-5` to the `stop` command.
+To specify a provider, model, or output language on demand, append `--provider anthropic`, `--model claude-sonnet-5`, or `--language en` / `--language es` / `--language auto` to the `stop` command.
+

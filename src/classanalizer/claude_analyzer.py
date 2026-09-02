@@ -7,7 +7,7 @@ import anthropic
 
 from classanalizer.base_analyzer import BaseAnalyzer
 from classanalizer.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
-from classanalizer.prompts import ANALYSIS_PROMPT_TEMPLATE, SYSTEM_PROMPT
+from classanalizer.prompts import get_prompts
 from classanalizer.transcriber import Transcriber
 
 
@@ -61,6 +61,7 @@ class ClaudeAnalyzer(BaseAnalyzer):
         transcript: str,
         prompt: str,
         primary_model: str,
+        system_prompt: Optional[str] = None,
     ) -> str:
         """Invoca Claude con reintentos ante rate limits y saturación."""
         candidate_models = [
@@ -76,7 +77,7 @@ class ClaudeAnalyzer(BaseAnalyzer):
         ]
 
         user_content = (
-            "A continuación se encuentra la transcripción completa de una clase grabada:\n\n"
+            "A continuación se encuentra la transcripción completa de una clase grabada / The following is the full lecture transcript:\n\n"
             f"---\n{transcript}\n---\n\n{prompt}"
         )
 
@@ -87,7 +88,7 @@ class ClaudeAnalyzer(BaseAnalyzer):
                     response = self.client.messages.create(
                         model=model_name,
                         max_tokens=8192,
-                        system=SYSTEM_PROMPT,
+                        system=system_prompt or "You are an elite academic assistant.",
                         messages=[{"role": "user", "content": user_content}],
                         temperature=0.3,
                     )
@@ -124,27 +125,30 @@ class ClaudeAnalyzer(BaseAnalyzer):
         subject: str = "Clase",
         date_str: str = "",
         model: Optional[str] = None,
+        language: Optional[str] = "auto",
     ) -> tuple[str, str]:
         """Ejecuta el pipeline audio → Whisper → Claude → entregables de texto."""
         if not audio_path.exists():
             raise FileNotFoundError(f"El archivo no existe: {audio_path}")
 
         selected_model = model or self.default_model
-        transcript = self._transcriber.transcribe(audio_path, language="es")
+        transcript = self._transcriber.transcribe(audio_path, language=language)
         if len(transcript.strip()) < 50:
             raise RuntimeError(
                 "La transcripción está vacía o es demasiado corta. "
                 "Verifica que el archivo contenga voz legible."
             )
 
-        prompt = ANALYSIS_PROMPT_TEMPLATE.format(
+        system_prompt, prompt = get_prompts(
             subject=subject,
-            date=date_str or time.strftime("%Y-%m-%d"),
+            date_str=date_str or time.strftime("%Y-%m-%d"),
+            language=language or "auto",
         )
         full_text = self._call_claude_with_resilience(
             transcript,
             prompt,
             primary_model=selected_model,
+            system_prompt=system_prompt,
         )
 
         tts_match = re.search(
