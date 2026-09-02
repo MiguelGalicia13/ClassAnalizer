@@ -26,4 +26,5 @@ El proveedor por defecto se configura con `AI_PROVIDER=gemini` o `AI_PROVIDER=an
    - Ejecución: `uv run python openclaw_skill/bridge.py --action stop --json`
    - El agente recibe las rutas del archivo Markdown, PDF y audio TTS generado, y puede enviar el resumen directamente al usuario en Telegram/WhatsApp.
 
-Para seleccionar un proveedor o modelo puntualmente, agrega `--provider anthropic` y `--model claude-sonnet-5` al comando `stop`.
+Para seleccionar un proveedor, modelo o idioma puntualmente, agrega `--provider anthropic`, `--model claude-sonnet-5` o `--language en` / `--language es` / `--language auto` al comando `stop`.
+

@@ -148,6 +148,7 @@ def process_audio_file(
     model: Optional[str] = None,
     provider: Optional[str] = None,
     api_key: Optional[str] = None,
+    language: Optional[str] = "auto",
 ):
     selected_provider = normalize_provider(provider)
     if selected_provider == "anthropic":
@@ -161,7 +162,7 @@ def process_audio_file(
 
     console.print(
         f"\n[bold blue]🧠 Procesando audio con {provider_label} - "
-        f"Materia: {subject}...[/bold blue]"
+        f"Materia: {subject} (Idioma: {language or 'auto'})...[/bold blue]"
     )
     send_notification("🧠 Procesando Clase", f"Analizando con {provider_label}: {subject}...")
 
@@ -171,7 +172,13 @@ def process_audio_file(
             api_key=api_key,
             model=chosen_model,
         )
-        markdown_text, tts_text = analyzer.analyze_audio(audio_path, subject=subject, date_str=date_str, model=chosen_model)
+        markdown_text, tts_text = analyzer.analyze_audio(
+            audio_path,
+            subject=subject,
+            date_str=date_str,
+            model=chosen_model,
+            language=language,
+        )
         
         status.update("[bold cyan]Exportando guía en Markdown y PDF...")
         md_file = output_dir / "guia_estudio.md"
@@ -179,10 +186,10 @@ def process_audio_file(
         tts_file = output_dir / "resumen_audio.mp3"
 
         Exporter.export_markdown(markdown_text, md_file)
-        Exporter.export_pdf(markdown_text, pdf_file)
+        Exporter.export_pdf(markdown_text, pdf_file, language=language)
         
-        status.update(f"[bold magenta]Generando narración en audio (TTS: {TTS_VOICE})...")
-        Exporter.export_tts_audio(tts_text, tts_file, voice=TTS_VOICE)
+        status.update("[bold magenta]Generando narración en audio (TTS)...")
+        Exporter.export_tts_audio(tts_text, tts_file, language=language)
 
     send_notification("✨ Guía Generada", f"Tu guía de {subject} está lista en PDF, MD y Audio.")
     console.print(Panel.fit(
@@ -212,6 +219,7 @@ def cmd_stop(args):
                 date_str,
                 model=args.model,
                 provider=args.provider,
+                language=getattr(args, "language", "auto"),
             )
     except Exception as e:
         console.print(f"[bold red]Error deteniendo grabación:[/bold red] {e}")
@@ -234,6 +242,7 @@ def cmd_analyze(args):
             output_dir,
             model=args.model,
             provider=args.provider,
+            language=getattr(args, "language", "auto"),
         )
     except Exception as e:
         console.print(f"[bold red]Error durante el análisis:[/bold red] {e}")
@@ -292,6 +301,13 @@ def main():
     p_stop.add_argument("--no-analyze", action="store_true", help="Detiene la grabación sin procesar con IA")
     p_stop.add_argument("--provider", "-p", choices=["gemini", "anthropic"], help="Proveedor de IA")
     p_stop.add_argument("--model", "-m", default=None, help="Modelo específico del proveedor")
+    p_stop.add_argument(
+        "--language",
+        "-l",
+        choices=["auto", "es", "en"],
+        default="auto",
+        help="Idioma de la guía generada: auto (detecta el idioma de la clase), es (español), en (inglés)",
+    )
 
     # Analyze
     p_analyze = subparsers.add_parser("analyze", help="Analiza un archivo de audio ya existente")
@@ -300,6 +316,13 @@ def main():
     p_analyze.add_argument("--outdir", "-o", help="Directorio donde guardar los resultados")
     p_analyze.add_argument("--provider", "-p", choices=["gemini", "anthropic"], help="Proveedor de IA")
     p_analyze.add_argument("--model", "-m", default=None, help="Modelo específico del proveedor")
+    p_analyze.add_argument(
+        "--language",
+        "-l",
+        choices=["auto", "es", "en"],
+        default="auto",
+        help="Idioma de la guía generada: auto (detecta el idioma de la clase), es (español), en (inglés)",
+    )
 
     # Validate
     p_validate = subparsers.add_parser(

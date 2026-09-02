@@ -55,7 +55,7 @@ class Transcriber:
 
         return file_path, False
 
-    def transcribe(self, audio_path: Path, language: str = "es") -> str:
+    def transcribe(self, audio_path: Path, language: Optional[str] = "auto") -> str:
         """Devuelve la transcripción completa de un archivo de audio/video."""
         if not audio_path.exists():
             raise FileNotFoundError(f"El archivo no existe: {audio_path}")
@@ -63,9 +63,10 @@ class Transcriber:
         proc_path, is_temp = self._extract_audio_for_stt(audio_path)
         try:
             model = self._get_model()
+            lang_param = None if not language or language == "auto" else language.lower()[:2]
             segments, _ = model.transcribe(
                 str(proc_path),
-                language=language,
+                language=lang_param,
                 beam_size=5,
                 word_timestamps=False,
                 vad_filter=True,

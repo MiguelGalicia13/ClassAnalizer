@@ -1,9 +1,10 @@
 import asyncio
 from pathlib import Path
+from typing import Optional
 import markdown
 import edge_tts
 
-from classanalizer.config import TTS_VOICE
+from classanalizer.config import TTS_VOICE, get_tts_voice
 from classanalizer.platform_utils import IS_WINDOWS
 
 ACADEMIC_CSS = """
@@ -158,7 +159,7 @@ class Exporter:
         return output_path
 
     @staticmethod
-    def export_pdf(markdown_content: str, output_path: Path) -> Path:
+    def export_pdf(markdown_content: str, output_path: Path, language: Optional[str] = "auto") -> Path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Convertir Markdown a HTML con extensiones de tablas y bloques de código
@@ -166,17 +167,21 @@ class Exporter:
             markdown_content,
             extensions=["extra", "codehilite", "nl2br", "sane_lists", "toc"]
         )
+        lang_code = "en" if language and language.lower().startswith("en") else "es"
+        title = "Study Guide" if lang_code == "en" else "Guía de Estudio"
+        page_label = "Page" if lang_code == "en" else "Página"
+        of_label = "of" if lang_code == "en" else "de"
         
         if IS_WINDOWS:
             full_html = f"""<!DOCTYPE html>
-<html lang="es">
+<html lang="{lang_code}">
 <head>
     <meta charset="UTF-8">
-    <title>Guía de Estudio</title>
+    <title>{title}</title>
     <style>{XHTML2PDF_CSS}</style>
 </head>
 <body>
-<div id="footerContent">Página <pdf:pagenumber/> de <pdf:pagecount/></div>
+<div id="footerContent">{page_label} <pdf:pagenumber/> {of_label} <pdf:pagecount/></div>
 {html_body}
 </body>
 </html>"""
@@ -189,10 +194,10 @@ class Exporter:
             return output_path
 
         full_html = f"""<!DOCTYPE html>
-<html lang="es">
+<html lang="{lang_code}">
 <head>
     <meta charset="UTF-8">
-    <title>Guía de Estudio</title>
+    <title>{title}</title>
     <style>{ACADEMIC_CSS}</style>
 </head>
 <body>
@@ -208,12 +213,19 @@ class Exporter:
         return output_path
 
     @staticmethod
-    def export_tts_audio(text: str, output_path: Path, voice: str = TTS_VOICE) -> Path:
+    def export_tts_audio(
+        text: str,
+        output_path: Path,
+        voice: Optional[str] = None,
+        language: Optional[str] = "auto",
+    ) -> Path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        selected_voice = voice or get_tts_voice(language=language, text=text)
 
         async def _synthesize():
-            communicate = edge_tts.Communicate(text, voice)
+            communicate = edge_tts.Communicate(text, selected_voice)
             await communicate.save(str(output_path))
 
         asyncio.run(_synthesize())
         return output_path
+
