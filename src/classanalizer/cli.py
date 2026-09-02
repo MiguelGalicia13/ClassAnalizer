@@ -30,7 +30,7 @@ from classanalizer.config import (
     OUTPUT_DIR,
     TTS_VOICE,
 )
-from classanalizer.platform import send_desktop_notification
+from classanalizer.platform_utils import send_desktop_notification
 
 console = Console()
 

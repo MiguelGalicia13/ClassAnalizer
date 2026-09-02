@@ -4,7 +4,7 @@ import markdown
 import edge_tts
 
 from classanalizer.config import TTS_VOICE
-from classanalizer.platform import IS_WINDOWS
+from classanalizer.platform_utils import IS_WINDOWS
 
 ACADEMIC_CSS = """
 @page {
