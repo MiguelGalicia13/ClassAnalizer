@@ -5,6 +5,8 @@ description: Graba clases virtuales (Google Meet) y genera automáticamente guí
 
 # ClassAnalizer Skill para OpenClaw
 
+**Español** | [English](SKILL_EN.md)
+
 Esta habilidad permite al agente OpenClaw controlar grabaciones de clases y generar resúmenes académicos multiformato.
 
 El proveedor por defecto se configura con `AI_PROVIDER=gemini` o `AI_PROVIDER=anthropic` en `.env`. Claude transcribe primero el audio con `faster-whisper`, por lo que la primera ejecución descargará el modelo local de Whisper.
