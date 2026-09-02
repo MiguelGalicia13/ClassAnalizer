@@ -116,6 +116,36 @@ Dentro de la aplicación podrás:
 2. **Importar Grabación:** Selecciona un archivo de audio o video (`.mp4`, `.mkv`, `.mp3`, etc.). La app optimizará el video extrayendo el audio y lo enviará a Gemini con un solo clic.
 3. **Explorar Resultados:** Abre el PDF directamente en tu visor, reproduce el audio TTS o consulta la guía en Markdown.
 
+### 5. Instalar el Lanzador de Escritorio en Linux (.desktop)
+
+Para integrar ClassAnalizer en tu entorno de escritorio (GNOME, KDE, XFCE, Rofi, etc.) y tener el comando `classanalizer` disponible en tu terminal:
+
+```bash
+bash install.sh
+```
+
+Este script automatiza:
+- El enlace simbólico en `~/.local/bin/classanalizer`.
+- La instalación del icono SVG en `~/.local/share/icons/hicolor/scalable/apps/classanalizer.svg`.
+- El archivo de acceso directo `classanalizer.desktop` en `~/.local/share/applications/`.
+- La actualización de la base de datos de aplicaciones y caché de iconos.
+
+---
+
+## 🛠️ Compilación y Empaquetado
+
+### Construir paquetes distribuibles (.whl y .tar.gz)
+```bash
+uv build
+```
+Los artefactos se generarán en la carpeta `dist/`.
+
+### Instalación nativa en Arch Linux (PKGBUILD)
+Si utilizas Arch Linux o derivados (Manjaro, EndeavourOS):
+```bash
+makepkg -si
+```
+
 ---
 
 ## 💻 Uso desde Terminal (CLI)
