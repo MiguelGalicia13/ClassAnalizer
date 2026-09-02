@@ -8,7 +8,11 @@ root = fso.GetParentFolderName(WScript.ScriptFullName)
 uvPath = fso.BuildPath(root, "uv.exe")
 
 If Not fso.FileExists(uvPath) Then
-    MsgBox "No se encontro uv.exe en la carpeta portable.", vbCritical, "ClassAnalizer"
+    shell.Run """" & fso.BuildPath(root, "ClassAnalizer.bat") & """", 1, True
+End If
+
+If Not fso.FileExists(uvPath) Then
+    MsgBox "No se encontro ni se pudo descargar uv.exe en la carpeta portable.", vbCritical, "ClassAnalizer"
     WScript.Quit 1
 End If
 
